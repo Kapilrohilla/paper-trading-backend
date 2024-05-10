@@ -8,4 +8,5 @@ declare global {
     var isFuturesRetrieved: boolean;
     var commodities: Record<string, Record<string, unknown>>
     var stocksDerivatives: never[] | Record<string, unknown>[]
+    var io: any
 }

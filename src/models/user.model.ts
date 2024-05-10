@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
     device_id: { type: String, required: false },
     wallet: { type: Number, required: false, default: 0 },
     leverage: { type: Number, required: false, default: 0 },
+    symbols: [{ type: String, required: false }]
 }, { timestamps: true });
 
 const userModel = mongoose.model('User', userSchema);

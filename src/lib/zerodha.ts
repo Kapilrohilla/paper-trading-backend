@@ -21,17 +21,18 @@ function handleIndicesTick(ticks: TickType) {
     }
 }
 function handleOnTicks(ticks: TickType) {
-    // console.log(ticks.length);
+    console.log(ticks.length);
     handleIndicesTick(ticks);
 
     if (global.isFuturesRetrieved === false) {
         instruments.setIndicesFutures().then(r => {
             const tokens = instruments.getFuturesIns_Tokens();
-            console.log("futures tokens count: " + tokens.length);
+            // console.log("futures tokens count: " + tokens.length);
             subscribe(tokens);
         })
     }
     handleFutureTicks(ticks);
+    global.io.emit("forex", ticks);
 
 }
 function handleFutureTicks(ticks: TickType) {

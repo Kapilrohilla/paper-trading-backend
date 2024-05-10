@@ -13,13 +13,16 @@ import TransactionModel from "../models/transactions.model";
 import Razorpay from "razorpay";
 import crypto from "node:crypto";
 const userRouter = new Hono().basePath('user');
-// mine
-const key_id = "rzp_test_wDliOlkvtU4cdh";
-const key_secret = "E2yPBVKFOjoIbiLUmG0O5zoF";
 import fs from 'fs/promises'
 import path from "path";
 import RazorpayModel from "../models/razorpay_order.model";
 import OrderModel from "../models/order.model";
+import dotenv from "dotenv";
+
+const envs = dotenv.config().parsed;
+const key_id = envs?.KEY_ID as string;
+const key_secret = envs?.KEY_SECRET as string;
+
 const razorpayInstance = new Razorpay({
     key_id: key_id,
     key_secret: key_secret
@@ -29,10 +32,6 @@ userRouter.get("/test", async (c) => {
     const file = await fs.readFile(filePath, "utf-8");
     return c.html(file);
 })
-// const razorpayInstance = new Razorpay({
-//     key_id: "rzp_test_eFYTwXFT7BjfPG",
-//     key_secret: "49uFjt254tPjsvCyiyL4W8Vt"
-// })
 
 userRouter.post('/login', async (c) => {
     const body = await c.req.json();
@@ -251,7 +250,7 @@ userRouter.post("/verifyorder", async (c) => {
 
 type createOrderPayloadType = z.infer<typeof pv.createOrderSchema>;
 
-userRouter.post("order", async (c) => {
+userRouter.post("/order", async (c) => {
     const payload = await c.req.json();
     //@ts-ignore
     const user = c.get('user');
@@ -261,11 +260,19 @@ userRouter.post("order", async (c) => {
     const savedOrder = await order.save();
     return c.json({ status: 200, message: STATUS_CODES['200'], order: savedOrder })
 });
-userRouter.get('order', middleware.AUTH_MIDDLEWARE, async (c) => {
+userRouter.get('/order', middleware.AUTH_MIDDLEWARE, async (c) => {
     //@ts-ignore
     const user = c.get('user');
     const orders = await OrderModel.find({ user_id: user._id });
     return c.json({ status: 200, message: STATUS_CODES['200'], orders })
+});
+
+userRouter.post("/watchlist", middleware.AUTH_MIDDLEWARE, async (c) => {
+    //@ts-ignore
+    const user = c.get('user');
+    const user_id = user._id;
+    return c.json({ user })
+    // const user = await userModel.findByIdAndUpdate(user_id, );
 });
 
 export default userRouter;

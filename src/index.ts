@@ -22,6 +22,8 @@ import zerodha from './lib/zerodha';
 import userRouter from './routes/user.routes';
 import { cors } from "hono/cors";
 import { ZodError } from 'zod';
+import middleware from './lib/middleware';
+import userModel from './models/user.model';
 const envs = dotenv.config().parsed;
 
 app.use(cors());
@@ -43,9 +45,7 @@ async function main() {
     const values = global.indices[symbol];
     i_c_tokens.push(values["ins_token"]);
   }
-  // console.log("commod___________")
   const keys = Object.keys(global.commodities)
-  // const commodities_tokens = new Array(keys.length);
   for (let i = 0; i < keys.length; i++) {
     const ins = global.commodities[keys[i]]?.instrument_token;
     i_c_tokens.push(ins);
@@ -59,7 +59,7 @@ async function main() {
 try {
   // main();
 } catch (err) {
-  console.log(err);
+  console.error(err);
 }
 
 
@@ -75,6 +75,31 @@ app.get("/cs", (c) => {
     console.log(checksum)
   }
   return c.json({ status: 200, c: checksum }, 200)
+})
+
+app.get("/symbol", async (c) => {
+  const symbols = Object.keys(global.indices)
+  console.log(symbols);
+
+  return c.json({
+    status: 200,
+    message: STATUS_CODES['200'],
+    symbols
+  })
+})
+
+app.post("/symbol", middleware.AUTH_MIDDLEWARE, async (c) => {
+  const body = await c.req.json();
+
+  const { symbol } = body;
+  //@ts-ignore
+  const user = c.get("user");
+  if (user.symbols.includes(symbol)) {
+    return c.json({ status: 400, message: STATUS_CODES['400'], error_description: "symbol already exists" });
+  } else {
+    const savedUser = await userModel.findByIdAndUpdate(user._id, { $push: { symbols: [symbol] } }, { new: true });
+    return c.json({ symbol, user, savedUser })
+  }
 })
 
 app.route("/", userRouter);
@@ -104,3 +129,5 @@ io.on("error", (err) => {
 io.on("connection", (socket) => {
   console.log("client connected: " + socket.id)
 })
+
+global.io = io;
