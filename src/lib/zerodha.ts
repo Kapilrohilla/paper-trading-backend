@@ -31,6 +31,7 @@ function handleOnTicks(ticks: TickType) {
             subscribe(tokens);
         })
     }
+    global.io.emit("forex", ticks)
     handleFutureTicks(ticks);
     global.io.emit("forex", ticks);
 
