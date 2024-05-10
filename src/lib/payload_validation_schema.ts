@@ -20,7 +20,7 @@ const VerifyOtpSchema = z.object({
 const UpdateProfileSchema = z.object({
     // user_id: z.string().refine(validateObjectId, { message: "Invalid string" }),
     name: z.string().optional(),
-    date_of_birth: z.date().optional()
+    date_of_birth: z.string().optional()
 })
 const ReadNotificationSchema = z.object({
     notifi_id: z.string().refine(validateObjectId, { message: "Invalid id" }),

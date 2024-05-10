@@ -29,6 +29,7 @@ app.use(cors());
 mongoose.connect(envs?.MONGODB_URI as string).then((r => {
   console.log('db connected');
 })).catch(_err => {
+	console.log(_err)
   console.error("failed to connect db");
 })
 
@@ -51,13 +52,14 @@ async function main() {
     i_c_tokens.push(ins);
   }
   zerodha.ticker.connect();
+  console.log(i_c_tokens)
   zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
   //@ts-ignore
   zerodha.ticker.on("ticks", zerodha.handleOnTicks);
 }
 
 try {
-  // main();
+   main();
 } catch (err) {
   console.log(err);
 }
@@ -104,3 +106,4 @@ io.on("error", (err) => {
 io.on("connection", (socket) => {
   console.log("client connected: " + socket.id)
 })
+global.io = io;
