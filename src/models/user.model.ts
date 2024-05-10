@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema({
     wallet: { type: Number, required: false, default: 0 },
     leverage: { type: Number, required: false, default: 0 },
     symbols: [{ type: String, required: false }]
-}, { timestamps: true });
+},
+    { timestamps: true });
 
 const userModel = mongoose.model('User', userSchema);
 export default userModel;

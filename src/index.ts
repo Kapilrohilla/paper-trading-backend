@@ -22,8 +22,8 @@ import zerodha from './lib/zerodha';
 import userRouter from './routes/user.routes';
 import { cors } from "hono/cors";
 import { ZodError } from 'zod';
-import middleware from './lib/middleware';
-import userModel from './models/user.model';
+// import middleware from './lib/middleware';
+// import userModel from './models/user.model';
 const envs = dotenv.config().parsed;
 
 app.use(cors());
@@ -80,40 +80,28 @@ app.get("/cs", (c) => {
 })
 
 app.get("/symbol", async (c) => {
-  const symbols = Object.keys(global.indices)
-  console.log(symbols);
+  const indicSymbol = Object.keys(global.indices)
+  const futSymbol = global.futures.map((ele) => ele.tradingsymbol);
+  const commoSymbol = Object.keys(global.commodities);
+  const stockDerivSymbol = global.stocksDerivatives.map((ele) => ele.tradingsymbol);
+  const symbols = [];
+  symbols.push({ indices: indicSymbol, futures: futSymbol, commodities: commoSymbol, stocksDerivatives: stockDerivSymbol });
 
-  return c.json({
-    status: 200,
-    message: STATUS_CODES['200'],
-    symbols
-  })
-})
-
-app.post("/symbol", middleware.AUTH_MIDDLEWARE, async (c) => {
-  const body = await c.req.json();
-
-  const { symbol } = body;
-  //@ts-ignore
-  const user = c.get("user");
-  if (user.symbols.includes(symbol)) {
-    return c.json({ status: 400, message: STATUS_CODES['400'], error_description: "symbol already exists" });
-  } else {
-    const savedUser = await userModel.findByIdAndUpdate(user._id, { $push: { symbols: [symbol] } }, { new: true });
-    return c.json({ symbol, user, savedUser })
-  }
-})
+  return c.json({ status: 200, message: STATUS_CODES['200'], symbols })
+});
 
 app.route("/", userRouter);
-
 
 app.onError((err, c) => {
   if (err instanceof ZodError) {
     return c.json({ status: 422, message: STATUS_CODES['422'], erorrs: err.errors, error_description: "payload validation error" });
-  } else {
-    console.log(err);
-    return c.json({ status: 500, error: "INTERNAL SERVER ERROR", error_description: err.message }, 500)
+  } else if (err instanceof Error) {
+    if (err.message === "Unexpected end of JSON input") {
+      return c.json({ status: 422, message: STATUS_CODES['422'], error_description: "Invalid json payload." });
+    }
   }
+
+  return c.json({ status: 500, message: STATUS_CODES['500'], error_description: err.message })
 })
 
 const port = 3000

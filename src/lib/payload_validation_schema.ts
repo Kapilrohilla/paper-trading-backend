@@ -43,5 +43,6 @@ const createOrderSchema = z.object({
     is_nse: z.boolean(),
     type: z.number().min(0, orderTypeMessage).max(1, orderTypeMessage)
 })
-const pv = { LoginSchema, VerifyOtpSchema, UpdateProfileSchema, ReadNotificationSchema, DeleteNotificationSchema, AddFundSchema, UpdateFundSchema, createOrderSchema };
+const add_delete_symbol_watchlist = z.object({ symbol: z.string() });
+const pv = { LoginSchema, VerifyOtpSchema, UpdateProfileSchema, ReadNotificationSchema, DeleteNotificationSchema, AddFundSchema, UpdateFundSchema, createOrderSchema, add_delete_symbol_watchlist };
 export default pv;

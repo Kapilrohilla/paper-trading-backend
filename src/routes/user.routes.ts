@@ -275,4 +275,31 @@ userRouter.post("/watchlist", middleware.AUTH_MIDDLEWARE, async (c) => {
     // const user = await userModel.findByIdAndUpdate(user_id, );
 });
 
+userRouter.post("/symbol", middleware.AUTH_MIDDLEWARE, async (c) => {
+    const body = await c.req.json();
+    await pv.add_delete_symbol_watchlist.parseAsync(body);
+    const { symbol } = body;
+    //@ts-ignore
+    const user = c.get("user");
+    if (user.symbols.includes(symbol)) {
+        return c.json({ status: 400, message: STATUS_CODES['400'], error_description: "symbol already exists" });
+    } else {
+        const savedUser = await userModel.findByIdAndUpdate(user._id, { $push: { symbols: [symbol] } }, { new: true });
+        return c.json({ status: 200, message: STATUS_CODES['200'], symbol, user: savedUser })
+    }
+})
+userRouter.delete('/symbol', middleware.AUTH_MIDDLEWARE, async (c) => {
+    const body = await c.req.json();
+    await pv.add_delete_symbol_watchlist.parseAsync(body);
+    const { symbol } = body;
+
+    //@ts-ignore
+    const user = c.get("user");
+    const user_id = user._id;
+    if (!user.symbols.includes(symbol)) {
+        return c.json({ status: 400, message: STATUS_CODES['400'], error_description: "symbol not exists in user watchlist" });
+    }
+    const updateUser = await userModel.findByIdAndUpdate(user_id, { $pull: { symbols: symbol } }, { new: true });
+    return c.json({ status: 200, message: STATUS_CODES['200'], user: updateUser });
+})
 export default userRouter;
