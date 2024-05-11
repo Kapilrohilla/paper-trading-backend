@@ -21,13 +21,8 @@ const AUTH_MIDDLEWARE = async (c: Context, next: any) => {
             error_description: "bearer token is required"
         })
     }
-    if (splittedAuth[0] !== "Bearer") {
-        return c.json({
-            status: 401,
-            message: STATUS_CODES['401'],
-            error_description: "Invalid token type"
-        })
-    }
+    if (splittedAuth[0] !== "Bearer") { return c.json({ status: 401, message: STATUS_CODES['401'], error_description: "Invalid token type" }) }
+
     try {
         const dt = decode(splittedAuth[1]);
         const objectId = dt.payload;

@@ -1,7 +1,7 @@
 
 import type { Redis } from "ioredis";
 declare global {
-    // var redis: Redis
+    var redis: Redis
     var indices: Record<string, Record<string, unknown>>
     var futures: never[] | Record<string, unknown>[];
     var futuresTokens: number[];
@@ -9,4 +9,5 @@ declare global {
     var commodities: Record<string, Record<string, unknown>>
     var stocksDerivatives: never[] | Record<string, unknown>[]
     var io: any
+    var currencies: Record<string, Record<string, unknown>>
 }

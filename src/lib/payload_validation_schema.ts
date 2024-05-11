@@ -44,5 +44,8 @@ const createOrderSchema = z.object({
     type: z.number().min(0, orderTypeMessage).max(1, orderTypeMessage)
 })
 const add_delete_symbol_watchlist = z.object({ symbol: z.string() });
-const pv = { LoginSchema, VerifyOtpSchema, UpdateProfileSchema, ReadNotificationSchema, DeleteNotificationSchema, AddFundSchema, UpdateFundSchema, createOrderSchema, add_delete_symbol_watchlist };
+
+const close_position_schema = z.object({ positionId: z.string(), quantity: z.number().optional() });
+
+const pv = { LoginSchema, VerifyOtpSchema, UpdateProfileSchema, ReadNotificationSchema, DeleteNotificationSchema, AddFundSchema, UpdateFundSchema, createOrderSchema, add_delete_symbol_watchlist, close_position_schema };
 export default pv;

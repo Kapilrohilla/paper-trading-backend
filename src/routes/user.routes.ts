@@ -85,7 +85,8 @@ userRouter.post("/verify-otp", async (c) => {
 type UpdateProfilePayloadType = z.infer<typeof pv.UpdateProfileSchema>;
 userRouter.post("/update-profile", middleware.AUTH_MIDDLEWARE, async (c) => {
     const body = await c.req.parseBody();
-    console.log(body);
+    // console.log(body);
+    console.log(body['avatar']);
     await pv.UpdateProfileSchema.parseAsync(body);
     const { name, date_of_birth } = body as UpdateProfilePayloadType;
     //@ts-ignore
@@ -250,13 +251,13 @@ userRouter.post("/verifyorder", async (c) => {
 
 type createOrderPayloadType = z.infer<typeof pv.createOrderSchema>;
 
-userRouter.post("/order", async (c) => {
+userRouter.post("/order", middleware.AUTH_MIDDLEWARE, async (c) => {
     const payload = await c.req.json();
     //@ts-ignore
     const user = c.get('user');
     await pv.createOrderSchema.parseAsync(payload);
     const { is_nse, stock_name, stock_price, stock_quantity, type } = payload as createOrderPayloadType;
-    const order = new OrderModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user?._id, type });
+    const order = new OrderModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user._id, type });
     const savedOrder = await order.save();
     return c.json({ status: 200, message: STATUS_CODES['200'], order: savedOrder })
 });
@@ -302,4 +303,50 @@ userRouter.delete('/symbol', middleware.AUTH_MIDDLEWARE, async (c) => {
     const updateUser = await userModel.findByIdAndUpdate(user_id, { $pull: { symbols: symbol } }, { new: true });
     return c.json({ status: 200, message: STATUS_CODES['200'], user: updateUser });
 })
+
+type ClosePositionSchema = z.infer<typeof pv.close_position_schema>;
+
+userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
+    const body = await c.req.json();
+    await pv.close_position_schema.parseAsync(body);
+
+    // @ts-ignore
+    const user = c.get('user');
+    const { positionId, quantity = 0 } = body as ClosePositionSchema;
+    const prevOrder = await OrderModel.findOne({ _id: positionId, user_id: user._id }).lean();
+    if (!prevOrder) return c.json({ status: 400, message: STATUS_CODES['400'], error_description: `Position with #${positionId} not found.` });
+
+    if (prevOrder.stock_quantity < quantity) return c.json({ status: 400, message: STATUS_CODES['200'], error_description: "position stock_quantity is shorter than provided quantity." });
+
+    // prevOrder.stock_quantity = quantity
+    const closePrice = 0;
+    let closeOrder;
+    if (0 === quantity) {
+        closeOrder = OrderModel.findByIdAndUpdate(prevOrder._id, { is_active: 0 }, { new: true });
+    } else {
+        closeOrder = new OrderModel({ is_active: 0, stock_quantity: quantity, closePrice: closePrice, is_nse: prevOrder.is_nse, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, type: prevOrder.type, user_id: prevOrder.user_id });
+    }
+    return c.json({ status: 200, message: STATUS_CODES['200'], order: prevOrder });
+
+})
+// type calculateMarginNBalanceReturns
+// function calculateMarginNBalance(balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string) {
+
+//     return {
+//         balance: 0,
+//         margin: 0
+//     }
+// }
+type marginTimeValue = {
+    interaday: number,
+    holding: number
+}
+const marginTimes: Record<string, marginTimeValue> = {
+    indices: { interaday: 500, holding: 50 },
+    options: { interaday: 10, holding: 1 },
+    futures: { interaday: 500, holding: 50 },
+    commodities: { interaday: 0, holding: 0 },
+    derivatives: { interaday: 500, holding: 50 },
+    currencies: { interaday: 0, holding: 0 }
+}
 export default userRouter;

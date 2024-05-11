@@ -9,12 +9,13 @@ import dotenv from "dotenv";
 // import { Redis } from 'ioredis';
 // const redis = new Redis();
 
-// global variables
+// // global variables
 // global.redis = redis;
 global.indices = {};
 global.futures = [];
 global.commodities = {};
 global.stocksDerivatives = [];
+global.currencies = {};
 global.isFuturesRetrieved = false;
 import instruments from './lib/instuments.lib';
 import generateChecksum from './lib/generate_checksum';
@@ -51,11 +52,11 @@ async function main() {
     const ins = global.commodities[keys[i]]?.instrument_token;
     i_c_tokens.push(ins);
   }
-  zerodha.ticker.connect();
+  // zerodha.ticker.connect();
   console.log(i_c_tokens)
-  zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
-  //@ts-ignore
-  zerodha.ticker.on("ticks", zerodha.handleOnTicks);
+  // zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
+  // //@ts-ignore
+  // zerodha.ticker.on("ticks", zerodha.handleOnTicks);
 }
 
 try {
