@@ -109,8 +109,9 @@ async function setStockDerivatives() {
     const stocksDerivativesDoc = await Instrument.find({ tradingsymbol: { $in: stockDerivatives }, exchange: 'NSE' });
     //@ts-ignore
     global.stocksDerivatives = stocksDerivativesDoc;
+    console.log("stocks derivatives cached: " + stocksDerivativesDoc.length);
 
 }
-setStockDerivatives();
-const instruments = { setIndicesFutures, setIndicesGlobally, getInstrumentListCSV, getFuturesIns_Tokens, setCommodities };
+
+const instruments = { setIndicesFutures, setIndicesGlobally, getInstrumentListCSV, getFuturesIns_Tokens, setCommodities, setStockDerivatives };
 export default instruments;

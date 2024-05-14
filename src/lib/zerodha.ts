@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { KiteTicker } from "kiteconnect";
 import instruments from "./instuments.lib";
+import OrderModel from "../models/order.model";
 
 const envs = dotenv.config().parsed;
 
@@ -12,6 +13,7 @@ function handleIndicesTick(ticks: TickType) {
         for (let i = 0; i < symbolInsToken.length; i++) {
             const token = symbolInsToken[i];
             const symbol = indicesSymbols[i];
+            closePositions(symbol, tick.last_price as number);
             if (token === tick.instrument_token) {
                 global.indices[symbol].last_price = tick.last_price;
                 global.indices[symbol].symbol = symbol;
@@ -21,7 +23,6 @@ function handleIndicesTick(ticks: TickType) {
     }
     return ticks;
 }
-
 const handleCommoTicks = (ticks: TickType) => {
     const commoSymbols = Object.keys(global.commodities);
     const commoTokens = Object.values(global.commodities).map((tick) => tick.instrument_token);
@@ -30,6 +31,7 @@ const handleCommoTicks = (ticks: TickType) => {
         for (let i = 0; i < commoSymbols.length; i++) {
             const token = commoTokens[i];
             const symbol = commoSymbols[i];
+            closePositions(symbol, tick.last_price as number);
             if (token === tick.instrument_token) {
                 global.commodities[symbol].last_price = tick.last_price;
                 global.commodities[symbol].symbol = symbol; // maybe not needed
@@ -61,7 +63,12 @@ function handleStocksDerivatives(ticks: TickType) {
         if (tickCacheIdx != -1) {
             console.log("::::matched::::");
             ticks[i] = global.stocksDerivatives[tickCacheIdx];
+            console.log(tick.symbol)
             global.stocksDerivatives[tickCacheIdx].last_price = tick.last_price;
+            // @ts-ignore
+            const symbol: string = tick.tradingsymbol;
+            console.log("Derivatives: " + symbol);
+            closePositions(symbol, tick.last_price as number);
         }
     }
     return ticks;
@@ -73,14 +80,13 @@ function handleFutureTicks(ticks: TickType) {
             if (tick.instrument_token === global.futures[j].instrument_token) {
                 global.futures[j].last_price = tick.last_price;
                 tick.symbol = global.futures[j].tradingsymbol;
+                closePositions(global.futures[j].tradingsymbol as string, tick.last_price as number);
                 ticks[i].symbol = global.futures[j].tradingsymbol;
-                // global.io.emit("e", tick);;
             }
         }
     }
     return ticks;
 }
-
 const ticker = new KiteTicker({
     api_key: envs?.API_KEY!,
     access_token: envs?.ACCESS_TOKEN!
@@ -99,4 +105,39 @@ function subscribe(ins_token: unknown[]) {
 
 const zerodha = { handleOnTicks, ticker, subscribe };
 
+const closePositions = (symbol: string, last_price: number) => {
+    const currentTime = new Date();
+    currentTime.setHours(15, 20, 0);
+    const currentHour = currentTime.getHours();
+    const currentMinute = currentTime.getMinutes();
+    if (symbol === "EURINR24MAY91.25CE") {
+        console.log("closing")
+    }
+    if (currentHour >= 15 && currentMinute >= 20) {
+        const positionsIds = Object.keys(global.positions);
+        const positions2Close = [];
+        for (let i = 0; i < positionsIds.length; i++) {
+            const id: string = positionsIds[i];
+            // @ts-ignore
+            if (global.positions[id].stock_name === symbol) {
+                // @ts-ignore
+                positions2Close.push(global.positions[id]._id.toString());
+            }
+        }
+        if (positions2Close.length > 0) {
+            for (let j = 0; j < positions2Close.length; j++) {
+                const id = positions2Close[j];
+                OrderModel.findByIdAndUpdate(id, { is_active: false, closePrice: last_price }).then(r => {
+                    for (let i = 0; i < positionsIds.length; i++) {
+                        const positionsId: string = positionsIds[i];
+                        //@ts-ignore
+                        delete global.positions[positionsId];
+                    }
+                }).catch(err => console.log(err));
+                //@ts-ignore
+                delete global.positions[id];
+            }
+        }
+    }
+}
 export default zerodha;

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import userModel from "../models/user.model";
-// import { isValidPayload, isValidPhone } from "../lib/helpers";
 import { STATUS_CODES } from "http";
 import OtpModel from "../models/otp.model";
 import { sign } from "hono/jwt";
@@ -259,6 +258,9 @@ userRouter.post("/order", middleware.AUTH_MIDDLEWARE, async (c) => {
     const { is_nse, stock_name, stock_price, stock_quantity, type, is_interaday, stock_type } = payload as createOrderPayloadType;
     const order = new OrderModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user._id, type, is_interaday, stock_type });
     const savedOrder = await order.save();
+    const key: string = savedOrder._id.toString();
+    //@ts-ignore
+    global.positions[key] = order;
     return c.json({ status: 200, message: STATUS_CODES['200'], order: savedOrder })
 });
 userRouter.get('/order', middleware.AUTH_MIDDLEWARE, async (c) => {
@@ -266,6 +268,16 @@ userRouter.get('/order', middleware.AUTH_MIDDLEWARE, async (c) => {
     const user = c.get('user');
     const orders = await OrderModel.find({ user_id: user._id });
     return c.json({ status: 200, message: STATUS_CODES['200'], orders })
+});
+
+userRouter.get('/order/:id', middleware.AUTH_MIDDLEWARE, async (c) => {
+    //@ts-ignore
+    const user = c.get('user');
+    const params = c.req.param();
+    const { id } = params;
+    console.log(id);
+    const order = await OrderModel.findOne({ _id: id, user_id: user._id }).lean();
+    return c.json({ status: 200, message: STATUS_CODES['200'], order })
 });
 
 userRouter.post("/symbol", middleware.AUTH_MIDDLEWARE, async (c) => {
@@ -310,15 +322,18 @@ userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
 
     if (prevOrder.stock_quantity < quantity) return c.json({ status: 400, message: STATUS_CODES['200'], error_description: "position stock_quantity is shorter than provided quantity." });
 
-    // prevOrder.stock_quantity = quantity
     const closePrice = 0;
     let closeOrder;
     if (0 === quantity || prevOrder.stock_quantity === quantity) {
-        closeOrder = await OrderModel.findByIdAndUpdate(prevOrder._id, { is_active: 0, closePrice: closePrice }, { new: true });
+        closeOrder = await OrderModel.findByIdAndUpdate(prevOrder._id, { is_active: 0, closePrice: closePrice }, { new: true })
+        //@ts-ignore
+        delete global.positions[positionId];
     } else {
         const toCloseOrder = new OrderModel({ is_active: 0, stock_quantity: quantity, closePrice: closePrice, is_nse: prevOrder.is_nse, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, type: prevOrder.type, user_id: prevOrder.user_id, is_interaday: prevOrder.is_interaday, stock_type: prevOrder.stock_type });
-        const pO = await OrderModel.findByIdAndUpdate(prevOrder._id, { stock_quantity: prevOrder.stock_quantity - quantity });
-        console.log(pO);
+        const pO = await OrderModel.findByIdAndUpdate(prevOrder._id, { stock_quantity: prevOrder.stock_quantity - quantity }, { new: true });
+        //@ts-ignore
+        global.positions[positionId].stock_quantity = pO?.stock_quantity;
+
         closeOrder = await toCloseOrder.save();
     }
     let updatedUser;
@@ -372,10 +387,6 @@ const marginTimes: Record<string, marginTimeValue> = {
  */
 const calculateMarginNBalance = (balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string, profit: number = 0): { margin: number, balance: number } => {
     const brokeragePercent = 0.01;
-    console.log(":::::::")
-    console.log(stockType);
-    console.log(marginTimes[stockType]);
-    console.log(":::::::")
     if (!marginTimes[stockType]) throw new Error("Invalid stockType: " + stockType);
 
     const times = isInteraday ? marginTimes[stockType].interaday : marginTimes[stockType].holding
@@ -386,5 +397,4 @@ const calculateMarginNBalance = (balance: number, quantity: number, isInteraday:
 
     return { margin: calcMargin, balance: calcBalance };
 }
-// console.log(calculateMarginNBalance(1000, 1, true, 500, "indices", 200), " --- margin");
 export default userRouter;

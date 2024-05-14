@@ -17,28 +17,23 @@ global.commodities = {};
 global.stocksDerivatives = [];
 global.currencies = {};
 global.isFuturesRetrieved = false;
+global.positions = [];
 import instruments from './lib/instuments.lib';
 import generateChecksum from './lib/generate_checksum';
 import zerodha from './lib/zerodha';
 import userRouter from './routes/user.routes';
 import { cors } from "hono/cors";
 import { ZodError } from 'zod';
-// import middleware from './lib/middleware';
-// import userModel from './models/user.model';
+import OrderModel from './models/order.model';
 const envs = dotenv.config().parsed;
 
 app.use(cors());
 
-mongoose.connect(envs?.MONGODB_URI as string).then((r => {
-  console.log('db connected');
-})).catch(_err => {
-  console.log(_err)
-  console.error("failed to connect db");
-})
 
 async function main() {
   await instruments.setIndicesGlobally();
   await instruments.setCommodities();
+  await instruments.setStockDerivatives();
   // get realtime data of indices
   const indicesSymbol = Object.keys(global.indices);
   const i_c_tokens: unknown[] = []
@@ -59,11 +54,7 @@ async function main() {
   zerodha.ticker.on("ticks", zerodha.handleOnTicks);
 }
 
-try {
-  main();
-} catch (err) {
-  console.error(err);
-}
+
 
 
 app.get('/ping', (c) => {
@@ -109,8 +100,7 @@ const port = 3000
 
 const server = serve({ fetch: app.fetch, port: port, }, (info) => {
   console.log(`Server is running: http://127.0.0.1:${info.port}`);
-}
-);
+});
 
 const io = new SocketIOServer(server as HttpServer);
 io.on("error", (err) => {
@@ -122,3 +112,29 @@ io.on("connection", (socket) => {
 })
 
 global.io = io;
+
+
+
+mongoose.connect(envs?.MONGODB_URI as string).then((r => {
+  console.log('db connected');
+  OrderModel.find({ is_active: true }).then(r => {
+    r.forEach((doc) => {
+      const key = doc._id.toString();
+      //@ts-ignore
+      global.positions[key] = doc;
+
+    })
+    console.log("positions data cached..")
+  }).catch((err) => {
+    console.log(err);
+  }).finally(() => {
+    try {
+      main();
+    } catch (err) {
+      console.error(err);
+    }
+  })
+})).catch(_err => {
+  console.log(_err)
+  console.error("failed to connect db");
+})
