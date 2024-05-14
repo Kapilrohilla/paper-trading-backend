@@ -256,8 +256,8 @@ userRouter.post("/order", middleware.AUTH_MIDDLEWARE, async (c) => {
     //@ts-ignore
     const user = c.get('user');
     await pv.createOrderSchema.parseAsync(payload);
-    const { is_nse, stock_name, stock_price, stock_quantity, type } = payload as createOrderPayloadType;
-    const order = new OrderModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user._id, type });
+    const { is_nse, stock_name, stock_price, stock_quantity, type, is_interaday, stock_type } = payload as createOrderPayloadType;
+    const order = new OrderModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user._id, type, is_interaday, stock_type });
     const savedOrder = await order.save();
     return c.json({ status: 200, message: STATUS_CODES['200'], order: savedOrder })
 });
@@ -266,14 +266,6 @@ userRouter.get('/order', middleware.AUTH_MIDDLEWARE, async (c) => {
     const user = c.get('user');
     const orders = await OrderModel.find({ user_id: user._id });
     return c.json({ status: 200, message: STATUS_CODES['200'], orders })
-});
-
-userRouter.post("/watchlist", middleware.AUTH_MIDDLEWARE, async (c) => {
-    //@ts-ignore
-    const user = c.get('user');
-    const user_id = user._id;
-    return c.json({ user })
-    // const user = await userModel.findByIdAndUpdate(user_id, );
 });
 
 userRouter.post("/symbol", middleware.AUTH_MIDDLEWARE, async (c) => {
@@ -313,7 +305,7 @@ userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
     // @ts-ignore
     const user = c.get('user');
     const { positionId, quantity = 0 } = body as ClosePositionSchema;
-    const prevOrder = await OrderModel.findOne({ _id: positionId, user_id: user._id }).lean();
+    const prevOrder = await OrderModel.findOne({ _id: positionId, user_id: user._id, is_active: true }).lean();
     if (!prevOrder) return c.json({ status: 400, message: STATUS_CODES['400'], error_description: `Position with #${positionId} not found.` });
 
     if (prevOrder.stock_quantity < quantity) return c.json({ status: 400, message: STATUS_CODES['200'], error_description: "position stock_quantity is shorter than provided quantity." });
@@ -321,22 +313,41 @@ userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
     // prevOrder.stock_quantity = quantity
     const closePrice = 0;
     let closeOrder;
-    if (0 === quantity) {
-        closeOrder = OrderModel.findByIdAndUpdate(prevOrder._id, { is_active: 0 }, { new: true });
+    if (0 === quantity || prevOrder.stock_quantity === quantity) {
+        closeOrder = await OrderModel.findByIdAndUpdate(prevOrder._id, { is_active: 0, closePrice: closePrice }, { new: true });
     } else {
-        closeOrder = new OrderModel({ is_active: 0, stock_quantity: quantity, closePrice: closePrice, is_nse: prevOrder.is_nse, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, type: prevOrder.type, user_id: prevOrder.user_id });
+        const toCloseOrder = new OrderModel({ is_active: 0, stock_quantity: quantity, closePrice: closePrice, is_nse: prevOrder.is_nse, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, type: prevOrder.type, user_id: prevOrder.user_id, is_interaday: prevOrder.is_interaday, stock_type: prevOrder.stock_type });
+        const pO = await OrderModel.findByIdAndUpdate(prevOrder._id, { stock_quantity: prevOrder.stock_quantity - quantity });
+        console.log(pO);
+        closeOrder = await toCloseOrder.save();
     }
-    return c.json({ status: 200, message: STATUS_CODES['200'], order: prevOrder });
+    let updatedUser;
+    try {
+        let profit = closePrice - prevOrder.stock_price;
 
+        let margin: number = user.wallet, balance: number = user.balance;
+        try {
+            const quant = (quantity === 0) ? prevOrder.stock_quantity : quantity;
+            //@ts-ignore
+            const mb = calculateMarginNBalance(user.wallet, quant, prevOrder.is_interaday, prevOrder.stock_type, profit);
+            margin = mb.margin;
+            balance = mb.balance;
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                console.log(err.message);
+            }
+        }
+        updatedUser = await userModel.findByIdAndUpdate(user._id, { $set: { wallet: balance, margin: margin } }, { new: true })
+        return c.json({ status: 200, message: STATUS_CODES['200'], order: closeOrder, updatedUser });
+    } catch (err) {
+        console.log(err);
+        if (err instanceof Error) {
+            return c.json({ status: 400, message: STATUS_CODES['400'], error_description: err.message })
+        } else {
+            return c.json({ status: 500, message: STATUS_CODES['500'], error_description: JSON.stringify(err) })
+        }
+    }
 })
-// type calculateMarginNBalanceReturns
-// function calculateMarginNBalance(balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string) {
-
-//     return {
-//         balance: 0,
-//         margin: 0
-//     }
-// }
 type marginTimeValue = {
     interaday: number,
     holding: number
@@ -349,4 +360,31 @@ const marginTimes: Record<string, marginTimeValue> = {
     derivatives: { interaday: 500, holding: 50 },
     currencies: { interaday: 0, holding: 0 }
 }
+/**
+ * 
+ * @param balance 
+ * @param quantity 
+ * @param isInteraday 
+ * @param amount 
+ * @param stockType 
+ * @param profit required if close position
+ * @returns 
+ */
+const calculateMarginNBalance = (balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string, profit: number = 0): { margin: number, balance: number } => {
+    const brokeragePercent = 0.01;
+    console.log(":::::::")
+    console.log(stockType);
+    console.log(marginTimes[stockType]);
+    console.log(":::::::")
+    if (!marginTimes[stockType]) throw new Error("Invalid stockType: " + stockType);
+
+    const times = isInteraday ? marginTimes[stockType].interaday : marginTimes[stockType].holding
+    const totalCharge = quantity * amount;
+    const brokerage = (brokeragePercent / 100) * totalCharge;
+    const calcBalance = balance - (totalCharge) / times - brokerage + profit;
+    const calcMargin = calcBalance * times;
+
+    return { margin: calcMargin, balance: calcBalance };
+}
+// console.log(calculateMarginNBalance(1000, 1, true, 500, "indices", 200), " --- margin");
 export default userRouter;

@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { KiteTicker } from "kiteconnect";
 import instruments from "./instuments.lib";
 
-
 const envs = dotenv.config().parsed;
 
 function handleIndicesTick(ticks: TickType) {

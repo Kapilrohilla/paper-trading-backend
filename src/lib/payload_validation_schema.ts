@@ -41,7 +41,11 @@ const createOrderSchema = z.object({
     stock_price: z.number(),
     stock_quantity: z.number(),
     is_nse: z.boolean(),
-    type: z.number().min(0, orderTypeMessage).max(1, orderTypeMessage)
+    type: z.number().min(0, orderTypeMessage).max(1, orderTypeMessage),
+    is_interaday: z.boolean(),
+    stock_type: z.string().refine((val) => (val === "indices" || val === "options" || val === "futures" || val === "commodities" || val === "derivatives" || val === "currencies") ? true : false, {
+        message: "stock_type should be one among (indices, options, futures, commodities, derivatives, currencies)"
+    })
 })
 const add_delete_symbol_watchlist = z.object({ symbol: z.string() });
 

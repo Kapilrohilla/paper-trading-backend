@@ -52,11 +52,11 @@ async function main() {
     const ins = global.commodities[keys[i]]?.instrument_token;
     i_c_tokens.push(ins);
   }
-  // zerodha.ticker.connect();
+  zerodha.ticker.connect();
   console.log(i_c_tokens)
-  // zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
-  // //@ts-ignore
-  // zerodha.ticker.on("ticks", zerodha.handleOnTicks);
+  zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
+  //@ts-ignore
+  zerodha.ticker.on("ticks", zerodha.handleOnTicks);
 }
 
 try {

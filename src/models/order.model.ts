@@ -8,7 +8,9 @@ const os = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     type: { type: Number, required: true, min: 0, max: 1 }, // 0 -> sell, 1 -> buy
     closePrice: { type: Number, required: false, min: 0 },
-    is_active: { type: Number, required: true, default: 1 }  // 1 -> active, 0-> close
+    is_active: { type: Boolean, required: true, default: true },  // true -> active, false -> close
+    is_interaday: { type: Boolean, required: true, default: false },
+    stock_type: { type: String, required: true }
 })
 
 const OrderModel = mongoose.model("Orders", os);
