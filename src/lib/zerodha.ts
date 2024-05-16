@@ -124,14 +124,13 @@ const closePositions = (symbol: string, last_price: number) => {
             if (global.positions[id].is_interaday === true) {
                 // @ts-ignore
                 console.log(global[positions[id]])
+                // @ts-ignor (global.positions[id].stock_name === symbol) {
                 // @ts-ignore
-                if (global.positions[id].stock_name === symbol) {
-                    // @ts-ignore
-                    positions2Close.push(global.positions[id]._id.toString());
+                positions2Close.push(global.positions[id]._id.toString());
 
-                }
             }
         }
+        // }
         if (positions2Close.length > 0) {
             for (let j = 0; j < positions2Close.length; j++) {
                 const id = positions2Close[j];
