@@ -109,16 +109,21 @@ const zerodha = { handleOnTicks, ticker, subscribe };
 const closePositions = (symbol: string, last_price: number) => {
     const currentTime = new Date();
     // currentTime.setHours(15, 20, 0);
-    console.log(symbol, last_price)
+    if (symbol === "NIFTY2451622150CE") {
+        console.log(symbol, last_price)
+    }
     const currentHour = currentTime.getHours();
     const currentMinute = currentTime.getMinutes();
     if (currentHour >= 15 && currentMinute >= 20) {
         const positionsIds = Object.keys(global.positions);
         const positions2Close = [];
-        for (let i = 0; i < positionsIds.length; i++)
-            // const id: string = positionsIds[i];
+        for (let i = 0; i < positionsIds.length; i++) {
+            const id: string = positionsIds[i];
+            // console.log(id);
             // @ts-ignore
             if (global.positions[id].is_interaday === true) {
+                // @ts-ignore
+                console.log(global[positions[id]])
                 // @ts-ignore
                 if (global.positions[id].stock_name === symbol) {
                     // @ts-ignore
@@ -126,7 +131,7 @@ const closePositions = (symbol: string, last_price: number) => {
 
                 }
             }
-        // }
+        }
         if (positions2Close.length > 0) {
             for (let j = 0; j < positions2Close.length; j++) {
                 const id = positions2Close[j];
