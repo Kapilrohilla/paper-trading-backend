@@ -43,7 +43,7 @@ const createOrderSchema = z.object({
     is_nse: z.boolean(),
     type: z.number().min(0, orderTypeMessage).max(1, orderTypeMessage),
     is_interaday: z.boolean(),
-    stock_type: z.string().refine((val) => (val === "indices" || val === "options" || val === "futures" || val === "commodities" || val === "derivatives" || val === "currencies") ? true : false, {
+    stock_type: z.string().refine((val) => (val === "indices" || val === "options" || val === "futures" || val === "commodities" || val === "stocksDerivatives" || val === "currencies") ? true : false, {
         message: "stock_type should be one among (indices, options, futures, commodities, derivatives, currencies)"
     })
 })

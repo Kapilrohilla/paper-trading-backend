@@ -372,7 +372,7 @@ const marginTimes: Record<string, marginTimeValue> = {
     options: { interaday: 10, holding: 1 },
     futures: { interaday: 500, holding: 50 },
     commodities: { interaday: 0, holding: 0 },
-    derivatives: { interaday: 500, holding: 50 },
+    stocksDerivatives: { interaday: 500, holding: 50 },
     currencies: { interaday: 0, holding: 0 }
 }
 /**

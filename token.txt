@@ -1,4 +1,4 @@
-https://stocktradecafe.com/redirect_url.php?action=login&type=login&status=success&request_token=smhDB3MJbW68XTJ18P4uoiYWaluFBJtk
+https://stocktradecafe.com/redirect_url.php?type=login&status=success&request_token=5wSmN889fz7xt7qdwBVEvFP4TIE0g9U9&action=login
 ***************************************************
 zerodha API KEY: x5hxpj7xieuvn4iq
 secret key: z4wpqfznpzukde8ibu0wv5jdjwzpnf6e
@@ -6,7 +6,6 @@ secret key: z4wpqfznpzukde8ibu0wv5jdjwzpnf6e
 
 
 *****************session/token*************************
-
 {
   "status": "success",
   "data": {
@@ -39,11 +38,11 @@ secret key: z4wpqfznpzukde8ibu0wv5jdjwzpnf6e
     "avatar_url": "https://s3.ap-south-1.amazonaws.com/zerodha-kite-blobs/avatars/l9PbITau1lAQeuuyiI6RWt4kgG3IUdjs.png",
     "user_id": "LE9863",
     "api_key": "x5hxpj7xieuvn4iq",
-    "access_token": "wzyHB1K1NmfIaT4COTK5D2Rdc2mcblRz",
-    "public_token": "LKYmaq2FfBqiG2GLTENQHPpe7QjhIATk",
+    "access_token": "TMApbtwPPflAEfD8IGbL1hYe2jkA01E1",
+    "public_token": "1PMHd1ylWvKACbrT0zcK5kxDP53XJYkP",
     "refresh_token": "",
-    "enctoken": "i4iWTG8theKTnQELtffK6bizCO0CrU862irfLOBJoHX6g6YP0hUSTBeK5UZ1UHZRtRSTk/ZS/h+YbU3Gb02iMPTgw20Em8e8LQmSMFopIbrD0r5kAMFKMsb+ZB8Oirs=",
-    "login_time": "2024-05-14 10:35:36",
+    "enctoken": "d6yv+LfcfTjhCxRZfCqU+5h3piUUncjzQAtuWAhqvUwmuHw3nmbNN/EuLFzhjB22ND4c46a6GMM/xWEk5d1RKP4FBJkdJvV0MTnUggAbikaVpF4GfKCnRPDLrKoFWx0=",
+    "login_time": "2024-05-16 10:57:11",
     "meta": {
       "demat_consent": "physical"
     }

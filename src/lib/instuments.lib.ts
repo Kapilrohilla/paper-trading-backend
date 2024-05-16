@@ -2,6 +2,7 @@ import axios from "axios";
 import Instrument from "../models/instruments.model";
 import csv from "csv-parser";
 import { Readable } from "stream";
+import mongoose from "mongoose";
 
 const stockDerivatives = ["AARTIIND", "ACC", "ADANIENT", "ADANIPORTS", "ALKEM", "AMARAJABAT", "AMBUJACEM", "APLLTD", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE", "BALKRISIND", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BPCL", "BRITANNIA", "CADILAHC", "CANBK", "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR", "CUB", "CUMMINSIND", "DABUR", "DEEPAKNTR", "DIVISLAB", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND", "FEDERALBNK", "GAIL", "GLENMARK", "GMRINFRA", "GODREJCP", "GODREJPROP", "GRANULES", "GRASIM", "GUJGASLTD", "HAVELLS", "HCLTECH", "HDFC", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "IBULHSGFIN", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IGL", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IRCTC", "ITC", "JINDALSTEL", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "L&amp;TFH", "LALPATHLAB", "LICHSGFIN", "LT", "LTI", "LTTS", "LUPIN", "M&amp;M", "M&amp;MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MFSL", "MGL", "MINDTREE", "MOTHERSON", "MPHASIS", "MRF", "MUTHOOTFIN", "NAM-INDIA", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND", "NMDC", "NTPC", "ONGC", "PAGEIND", "PEL", "PETRONET", "PFC", "PFIZER", "PIDILITIND", "PIIND", "PNB", "POWERGRID", "PVR", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBILIFE", "SBIN", "SHREECEM", "SIEMENS", "SRF", "SRTRANSFIN", "SUNPHARMA", "SUNTV", "TATACHEM", "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM", "TORNTPOWER", "TRENT", "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL"]
 /**
@@ -29,29 +30,63 @@ async function setIndicesGlobally() {
     return indices;
 }
 
+const instruemnt = mongoose.connection.collection('instument');
 
 async function getInstrumentListCSV() {
+    console.log("updating instruments...")
     const csvResponse = await axios.get("https://api.kite.trade/instruments");
     const data = csvResponse.data;
+    // console.log(data);
     const results: Record<string, unknown>[] = []
-    Readable.from(data).pipe(csv()).on("data", (chunk) => {
+    await instruemnt.deleteMany();
+    Readable.from(data).pipe(csv()).on("data", async (chunk) => {
         results.push(chunk);
+        // try {
+        //     await Instrument.insertMany(chunk);
+        // } catch (err) {
+        //     console.error(err);
+        // }
+    }).on('end', () => {
+        console.log("ended");
+        console.log(results.length);
+        console.log(results[0]);
+        instruemnt.insertMany(results).then((r: any) => {
+            console.log(r);
+        })
+    })
+
+    /*
+    try {
+        await Instrument.deleteMany({});
+    } catch (err) {
+        console.log(err);
+    }
+    Readable.from(data).pipe(csv()).on("data", async (chunk) => {
+        // console.log(chunk, 0);
+        results.push(chunk);
+        try {
+            // await Instrument.insertMany(chunk);
+            
+        } catch (err) {
+            console.log(err);
+        }
     }).on("end", async () => {
         try {
-            await Instrument.deleteMany({}).then(r => {
-                Instrument.insertMany(results).then(r => {
-                    console.log("instruments updated successfuly.");
-                    // console.log(r);
-                }).catch(err => {
-                    console.log("______error while inserting_____")
-                    console.log(err);
-                    console.log("______error while inserting_____")
-                });
-            });
+            // await Instrument.deleteMany({}).then(r => {
+            //     Instrument.insertMany(results).then(r => {
+            //         console.log("instruments updated successfuly.");
+            //         // console.log(r);
+            //     }).catch(err => {
+            //         console.log("______error while inserting_____")
+            //         console.log(err);
+            //         console.log("______error while inserting_____")
+            //     });
+            // });
         } catch (err) {
             console.error(err);
         }
     });
+    */
 
 }
 

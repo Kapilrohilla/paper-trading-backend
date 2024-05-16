@@ -13,8 +13,8 @@ function handleIndicesTick(ticks: TickType) {
         for (let i = 0; i < symbolInsToken.length; i++) {
             const token = symbolInsToken[i];
             const symbol = indicesSymbols[i];
-            closePositions(symbol, tick.last_price as number);
             if (token === tick.instrument_token) {
+                closePositions(symbol, tick.last_price as number);
                 global.indices[symbol].last_price = tick.last_price;
                 global.indices[symbol].symbol = symbol;
                 tick.symbol = symbol;
@@ -31,11 +31,11 @@ const handleCommoTicks = (ticks: TickType) => {
         for (let i = 0; i < commoSymbols.length; i++) {
             const token = commoTokens[i];
             const symbol = commoSymbols[i];
-            closePositions(symbol, tick.last_price as number);
             if (token === tick.instrument_token) {
                 global.commodities[symbol].last_price = tick.last_price;
                 global.commodities[symbol].symbol = symbol; // maybe not needed
                 tick.symbol = symbol;
+                closePositions(symbol, tick.last_price as number);
             }
         }
     }
@@ -59,15 +59,15 @@ function handleOnTicks(ticks: TickType) {
 function handleStocksDerivatives(ticks: TickType) {
     for (let i = 0; i < ticks.length; i++) {
         const tick = ticks[i];
-        const tickCacheIdx = global.stocksDerivatives.findIndex((obj) => obj.instrument_token === tick.instrument_token)
+        const tickCacheIdx = global.stocksDerivatives.findIndex((obj) => {
+            return obj.instrument_token === tick.instrument_token
+        })
+
         if (tickCacheIdx != -1) {
-            console.log("::::matched::::");
-            ticks[i] = global.stocksDerivatives[tickCacheIdx];
-            console.log(tick.symbol)
             global.stocksDerivatives[tickCacheIdx].last_price = tick.last_price;
             // @ts-ignore
-            const symbol: string = tick.tradingsymbol;
-            console.log("Derivatives: " + symbol);
+            const symbol: string = global.stocksDerivatives[tickCacheIdx].tradingsymbol
+            // console.log("Derivatives: " + symbol);
             closePositions(symbol, tick.last_price as number);
         }
     }
@@ -77,6 +77,7 @@ function handleFutureTicks(ticks: TickType) {
     for (let i = 0; i < ticks.length; i++) {
         const tick = ticks[i];
         for (let j = 0; j < global.futures.length; j++) {
+            // console.log(global.futures[0]);
             if (tick.instrument_token === global.futures[j].instrument_token) {
                 global.futures[j].last_price = tick.last_price;
                 tick.symbol = global.futures[j].tradingsymbol;
@@ -107,23 +108,25 @@ const zerodha = { handleOnTicks, ticker, subscribe };
 
 const closePositions = (symbol: string, last_price: number) => {
     const currentTime = new Date();
-    currentTime.setHours(15, 20, 0);
+    // currentTime.setHours(15, 20, 0);
+    console.log(symbol, last_price)
     const currentHour = currentTime.getHours();
     const currentMinute = currentTime.getMinutes();
-    if (symbol === "EURINR24MAY91.25CE") {
-        console.log("closing")
-    }
     if (currentHour >= 15 && currentMinute >= 20) {
         const positionsIds = Object.keys(global.positions);
         const positions2Close = [];
-        for (let i = 0; i < positionsIds.length; i++) {
-            const id: string = positionsIds[i];
+        for (let i = 0; i < positionsIds.length; i++)
+            // const id: string = positionsIds[i];
             // @ts-ignore
-            if (global.positions[id].stock_name === symbol) {
+            if (global.positions[id].is_interaday === true) {
                 // @ts-ignore
-                positions2Close.push(global.positions[id]._id.toString());
+                if (global.positions[id].stock_name === symbol) {
+                    // @ts-ignore
+                    positions2Close.push(global.positions[id]._id.toString());
+
+                }
             }
-        }
+        // }
         if (positions2Close.length > 0) {
             for (let j = 0; j < positions2Close.length; j++) {
                 const id = positions2Close[j];

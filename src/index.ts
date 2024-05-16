@@ -25,6 +25,7 @@ import userRouter from './routes/user.routes';
 import { cors } from "hono/cors";
 import { ZodError } from 'zod';
 import OrderModel from './models/order.model';
+import cronJobs from './lib/crons';
 const envs = dotenv.config().parsed;
 
 app.use(cors());
@@ -47,13 +48,19 @@ async function main() {
     const ins = global.commodities[keys[i]]?.instrument_token;
     i_c_tokens.push(ins);
   }
+  // const derivatives = Object.keys(global.stocksDerivatives);
+
+  // console.log(derivatives);
+  for (let i = 0; i < global.stocksDerivatives.length; i++) {
+    const ins = global.stocksDerivatives[i]
+    i_c_tokens.push(ins.instrument_token);
+  }
   zerodha.ticker.connect();
   console.log(i_c_tokens)
   zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
   //@ts-ignore
   zerodha.ticker.on("ticks", zerodha.handleOnTicks);
 }
-
 
 
 
@@ -117,6 +124,7 @@ global.io = io;
 
 mongoose.connect(envs?.MONGODB_URI as string).then((r => {
   console.log('db connected');
+  cronJobs();
   OrderModel.find({ is_active: true }).then(r => {
     r.forEach((doc) => {
       const key = doc._id.toString();
