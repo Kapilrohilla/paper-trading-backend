@@ -48,9 +48,6 @@ async function main() {
     const ins = global.commodities[keys[i]]?.instrument_token;
     i_c_tokens.push(ins);
   }
-  // const derivatives = Object.keys(global.stocksDerivatives);
-
-  // console.log(derivatives);
   for (let i = 0; i < global.stocksDerivatives.length; i++) {
     const ins = global.stocksDerivatives[i]
     i_c_tokens.push(ins.instrument_token);

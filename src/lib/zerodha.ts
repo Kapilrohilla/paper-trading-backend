@@ -65,6 +65,7 @@ function handleStocksDerivatives(ticks: TickType) {
 
         if (tickCacheIdx != -1) {
             global.stocksDerivatives[tickCacheIdx].last_price = tick.last_price;
+            ticks[i].symbol = global.stocksDerivatives[tickCacheIdx].tradingsymbol;
             // @ts-ignore
             const symbol: string = global.stocksDerivatives[tickCacheIdx].tradingsymbol
             // console.log("Derivatives: " + symbol);
@@ -108,7 +109,7 @@ const zerodha = { handleOnTicks, ticker, subscribe };
 
 const closePositions = (symbol: string, last_price: number) => {
     const currentTime = new Date();
-    // currentTime.setHours(15, 20, 0);
+    currentTime.setHours(15, 20, 0);
     if (symbol === "NIFTY2451622150CE") {
         console.log(symbol, last_price)
     }
@@ -119,12 +120,10 @@ const closePositions = (symbol: string, last_price: number) => {
         const positions2Close = [];
         for (let i = 0; i < positionsIds.length; i++) {
             const id: string = positionsIds[i];
-            // console.log(id);
             // @ts-ignore
             if (global.positions[id].is_interaday === true) {
                 // @ts-ignore
                 console.log(global[positions[id]])
-                // @ts-ignor (global.positions[id].stock_name === symbol) {
                 // @ts-ignore
                 positions2Close.push(global.positions[id]._id.toString());
 
