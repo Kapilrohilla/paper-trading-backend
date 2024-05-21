@@ -5,6 +5,7 @@ import { Readable } from "stream";
 import mongoose from "mongoose";
 
 const stockDerivatives = ["AARTIIND", "ACC", "ADANIENT", "ADANIPORTS", "ALKEM", "AMARAJABAT", "AMBUJACEM", "APLLTD", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE", "BALKRISIND", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BPCL", "BRITANNIA", "CADILAHC", "CANBK", "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR", "CUB", "CUMMINSIND", "DABUR", "DEEPAKNTR", "DIVISLAB", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND", "FEDERALBNK", "GAIL", "GLENMARK", "GMRINFRA", "GODREJCP", "GODREJPROP", "GRANULES", "GRASIM", "GUJGASLTD", "HAVELLS", "HCLTECH", "HDFC", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "IBULHSGFIN", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IGL", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IRCTC", "ITC", "JINDALSTEL", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "L&amp;TFH", "LALPATHLAB", "LICHSGFIN", "LT", "LTI", "LTTS", "LUPIN", "M&amp;M", "M&amp;MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MFSL", "MGL", "MINDTREE", "MOTHERSON", "MPHASIS", "MRF", "MUTHOOTFIN", "NAM-INDIA", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND", "NMDC", "NTPC", "ONGC", "PAGEIND", "PEL", "PETRONET", "PFC", "PFIZER", "PIDILITIND", "PIIND", "PNB", "POWERGRID", "PVR", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBILIFE", "SBIN", "SHREECEM", "SIEMENS", "SRF", "SRTRANSFIN", "SUNPHARMA", "SUNTV", "TATACHEM", "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM", "TORNTPOWER", "TRENT", "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL"]
+const midcapStocks = ["ACC", "APLAPOLLO", "AUBANK", "ABCAPITAL", "ABFRL", "ALKEM", "APOLLOTYRE", "ASHOKLEY", "ASTRAL", "AUROPHARMA", "BSE", "BALKRISIND", "BANDHANBNK", "BANKINDIA", "MAHABANK", "BDL", "BHARATFORG", "BHEL", "BIOCON", "CGPOWER", "COFORGE", "CONCOR", "CUMMINSIND", "DALBHARAT", "DEEPAKNTR", "DELHIVERY", "DIXON", "LALPATHLAB", "ESCORTS", "NYKAA", "FEDERALBNK", "FACT", "FORTIS", "GMRINFRA", "GLAND", "GODREJPROP", "GUJGASLTD", "HDFCAMC", "HINDPETRO", "IDBI", "IDFCFIRSTB", "INDIANB", "INDHOTEL", "IGL", "INDUSTOWER", "IPCALAB", "JSWENERGY", "JSWINFRA", "JUBLFOOD", "KPITTECH", "KALYANKJIL", "LTF", "LTTS", "LICHSGFIN", "LAURUSLABS", "LUPIN", "MRF", "LODHA", "M&MFIN", "MANKIND", "MFSL", "MAXHEALTH", "MAZDOCK", "MPHASIS", "NHPC", "NMDC", "OBEROIRLTY", "OIL", "PAYTM", "OFSS", "POLICYBZR", "PIIND", "PAGEIND", "PATANJALI", "PERSISTENT", "PETRONET", "PEL", "POLYCAB", "POONAWALLA", "PRESTIGE", "RVNL", "SJVN", "SONACOMS", "SAIL", "SUNTV", "SUPREMEIND", "SUZLON", "SYNGENE", "TATACHEM", "TATACOMM", "TATAELXSI", "TATATECH", "TORNTPOWER", "TIINDIA", "UPL", "UNIONBANK", "IDEA", "VOLTAS", "YESBANK", "ZEEL"]
 /**
  * It's retrieve the indices from mongodb set the required data to global variable
  * @returns Promise of indices
@@ -117,6 +118,16 @@ async function setIndicesFutures() {
     console.log("indices futures setting complete...")
 }
 
+async function setCurrencies() {
+    const currency = ["USDINR"]
+    const sym = [];
+    for (let curr of currency) {
+        const ins = await Instrument.find({ name: curr, instrument_type: "CE" })
+        console.log(ins);
+    }
+
+}
+
 async function setCommodities() {
     const symbols = ["WTICRUDEOIL", "SILVER", "GOLD"];
     const commodities: Record<string, Record<string, unknown>> = {};
@@ -148,5 +159,11 @@ async function setStockDerivatives() {
 
 }
 
-const instruments = { setIndicesFutures, setIndicesGlobally, getInstrumentListCSV, getFuturesIns_Tokens, setCommodities, setStockDerivatives };
+async function setMicaps() {
+    const stocksDerivativesDoc = await Instrument.find({ tradingsymbol: { $in: midcapStocks }, exchange: 'NSE' });
+    //@ts-ignore
+    global.midcap = stocksDerivativesDoc;
+
+}
+const instruments = { setCurrencies, setIndicesFutures, setIndicesGlobally, getInstrumentListCSV, getFuturesIns_Tokens, setCommodities, setStockDerivatives, setMicaps };
 export default instruments;

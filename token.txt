@@ -38,11 +38,11 @@ secret key: z4wpqfznpzukde8ibu0wv5jdjwzpnf6e
     "avatar_url": "https://s3.ap-south-1.amazonaws.com/zerodha-kite-blobs/avatars/l9PbITau1lAQeuuyiI6RWt4kgG3IUdjs.png",
     "user_id": "LE9863",
     "api_key": "x5hxpj7xieuvn4iq",
-    "access_token": "TMApbtwPPflAEfD8IGbL1hYe2jkA01E1",
-    "public_token": "1PMHd1ylWvKACbrT0zcK5kxDP53XJYkP",
+    "access_token": "NaEU6mJ6RduwW2m5VZILXr6rH3hipopC",
+    "public_token": "14R4FuR6u5rO1kVsubOb1MMtww3IUxdP",
     "refresh_token": "",
-    "enctoken": "d6yv+LfcfTjhCxRZfCqU+5h3piUUncjzQAtuWAhqvUwmuHw3nmbNN/EuLFzhjB22ND4c46a6GMM/xWEk5d1RKP4FBJkdJvV0MTnUggAbikaVpF4GfKCnRPDLrKoFWx0=",
-    "login_time": "2024-05-16 10:57:11",
+    "enctoken": "XvGVM0uDQ35gLwovkSi3OPJ5MarSELIHeWoq8RK2FUa/lKYY9gKqe2GgGtOI/fMmKkiMnKz5A4CalwZSmdlydw/qrvQdYVBQrc5XbQAdWOCThsv/RXIGfAj18VvZDjw=",
+    "login_time": "2024-05-21 10:19:57",
     "meta": {
       "demat_consent": "physical"
     }

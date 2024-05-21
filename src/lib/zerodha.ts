@@ -41,6 +41,27 @@ const handleCommoTicks = (ticks: TickType) => {
     }
     return ticks;
 }
+
+function handleMidcapDerivatives(ticks: TickType) {
+    for (let i = 0; i < ticks.length; i++) {
+        const tick = ticks[i];
+        const tickCacheIdx = global.midcap.findIndex((obj) => {
+            return obj.instrument_token === tick.instrument_token
+        })
+
+        if (tickCacheIdx != -1) {
+            global.midcap[tickCacheIdx].last_price = tick.last_price;
+            ticks[i].symbol = global.midcap[tickCacheIdx].tradingsymbol;
+            // console.log(tickCacheIdx)
+            // @ts-ignore
+            const symbol: string = global.midcap[tickCacheIdx].tradingsymbol
+            // console.log("Derivatives: " + symbol);
+            closePositions(symbol, tick.last_price as number);
+        }
+    }
+    return ticks;
+}
+
 function handleOnTicks(ticks: TickType) {
     console.log(ticks.length);
     const indicSymbol = handleIndicesTick(ticks);
@@ -54,7 +75,8 @@ function handleOnTicks(ticks: TickType) {
     const commoSymbol = handleCommoTicks(indicSymbol);
     const futSymbols = handleFutureTicks(commoSymbol);
     const derivSymbols = handleStocksDerivatives(futSymbols);
-    global.io.emit("forex", derivSymbols);
+    const midcapSymbols = handleMidcapDerivatives(derivSymbols);
+    global.io.emit("forex", midcapSymbols);
 }
 function handleStocksDerivatives(ticks: TickType) {
     for (let i = 0; i < ticks.length; i++) {
@@ -101,7 +123,6 @@ function subscribe(ins_token: unknown[]) {
     // const ins_token = items.map((item) => item?.ins_token)
     ticker.subscribe(ins_token);
 
-    ticker.setMode(ticker.modeFull, ins_token);
     console.log("subscribed...")
 }
 
@@ -109,10 +130,10 @@ const zerodha = { handleOnTicks, ticker, subscribe };
 
 const closePositions = (symbol: string, last_price: number) => {
     const currentTime = new Date();
-    currentTime.setHours(15, 20, 0);
-    if (symbol === "NIFTY2451622150CE") {
-        console.log(symbol, last_price)
-    }
+    // currentTime.setHours(15, 20, 0);
+    // if (symbol === "NIFTY2451622150CE") {
+    //     console.log(symbol, last_price)
+    // }
     const currentHour = currentTime.getHours();
     const currentMinute = currentTime.getMinutes();
     if (currentHour >= 15 && currentMinute >= 20) {

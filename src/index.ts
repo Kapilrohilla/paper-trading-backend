@@ -16,6 +16,7 @@ global.futures = [];
 global.commodities = {};
 global.stocksDerivatives = [];
 global.currencies = {};
+global.midcap = [];
 global.isFuturesRetrieved = false;
 global.positions = [];
 import instruments from './lib/instuments.lib';
@@ -35,6 +36,8 @@ async function main() {
   await instruments.setIndicesGlobally();
   await instruments.setCommodities();
   await instruments.setStockDerivatives();
+  await instruments.setCurrencies();
+  await instruments.setMicaps()
   // get realtime data of indices
   const indicesSymbol = Object.keys(global.indices);
   const i_c_tokens: unknown[] = []
@@ -50,6 +53,10 @@ async function main() {
   }
   for (let i = 0; i < global.stocksDerivatives.length; i++) {
     const ins = global.stocksDerivatives[i]
+    i_c_tokens.push(ins.instrument_token);
+  }
+  for (let i = 0; i < global.midcap.length; i++) {
+    const ins = global.midcap[i]
     i_c_tokens.push(ins.instrument_token);
   }
   zerodha.ticker.connect();
@@ -80,8 +87,10 @@ app.get("/symbol", async (c) => {
   const futSymbol = global.futures.map((ele) => ele.tradingsymbol);
   const commoSymbol = Object.keys(global.commodities);
   const stockDerivSymbol = global.stocksDerivatives.map((ele) => ele.tradingsymbol);
+  const midcapSymbol = global.midcap.map((ele) => ele.tradingsymbol);
   const symbols = [];
-  symbols.push({ indices: indicSymbol, futures: futSymbol, commodities: commoSymbol, stocksDerivatives: stockDerivSymbol });
+  console.log(midcapSymbol)
+  symbols.push({ indices: indicSymbol, futures: futSymbol, commodities: commoSymbol, stocksDerivatives: stockDerivSymbol, midcap: midcapSymbol });
 
   return c.json({ status: 200, message: STATUS_CODES['200'], symbols })
 });
@@ -96,7 +105,7 @@ app.onError((err, c) => {
       return c.json({ status: 422, message: STATUS_CODES['422'], error_description: "Invalid json payload." });
     }
   }
-
+  console.log(err);
   return c.json({ status: 500, message: STATUS_CODES['500'], error_description: err.message })
 })
 

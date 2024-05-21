@@ -17,6 +17,7 @@ import path from "path";
 import RazorpayModel from "../models/razorpay_order.model";
 import OrderModel from "../models/order.model";
 import dotenv from "dotenv";
+import HistoryModel from "../models/history.model";
 
 const envs = dotenv.config().parsed;
 const key_id = envs?.KEY_ID as string;
@@ -256,12 +257,25 @@ userRouter.post("/order", middleware.AUTH_MIDDLEWARE, async (c) => {
     const user = c.get('user');
     await pv.createOrderSchema.parseAsync(payload);
     const { is_nse, stock_name, stock_price, stock_quantity, type, is_interaday, stock_type } = payload as createOrderPayloadType;
+
+    let mb;
+    try {
+        mb = calculateMarginNBalance(user.wallet, stock_quantity, is_interaday, stock_price, stock_type);
+    } catch (err) {
+        console.log(err);
+        return c.json({ status: 400, message: "Insuffient balance" });
+    }
+    // console.log(mb)
     const order = new OrderModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user._id, type, is_interaday, stock_type });
+    const history = new HistoryModel({ is_nse: is_nse, stock_name: stock_name, stock_price: stock_price, stock_quantity, user_id: user._id, type, is_interaday, stock_type, is_active: true });
     const savedOrder = await order.save();
+    const savedHistory = await history.save();
+
+    const updatedUser = await userModel.findByIdAndUpdate(user._id, { $set: { wallet: mb.balance, margin: mb.margin } }, { new: true });
     const key: string = savedOrder._id.toString();
     //@ts-ignore
-    global.positions[key] = order;
-    return c.json({ status: 200, message: STATUS_CODES['200'], order: savedOrder })
+    global.positions[key] = order; 0
+    return c.json({ status: 200, message: STATUS_CODES['200'], order: savedOrder, user: updatedUser });
 });
 userRouter.get('/order', middleware.AUTH_MIDDLEWARE, async (c) => {
     //@ts-ignore
@@ -269,6 +283,23 @@ userRouter.get('/order', middleware.AUTH_MIDDLEWARE, async (c) => {
     const orders = await OrderModel.find({ user_id: user._id });
     return c.json({ status: 200, message: STATUS_CODES['200'], orders })
 });
+
+userRouter.get("history", middleware.AUTH_MIDDLEWARE, async (c) => {
+
+    //@ts-ignore
+    const user = c.get('user');
+    const user_id = user._id;
+    const history = await HistoryModel.find({ user_id: user_id });
+    const netPro = history.reduce((pv, cv) => {
+        if (cv.is_active === false) {
+            const pro = cv.closePrice - cv.stock_price
+            return pv += pro;
+        } else {
+            return pv;
+        }
+    }, 0)
+    return c.json({ status: 200, message: STATUS_CODES['200'], history, profit: netPro })
+})
 
 userRouter.get('/order/:id', middleware.AUTH_MIDDLEWARE, async (c) => {
     //@ts-ignore
@@ -309,7 +340,9 @@ userRouter.delete('/symbol', middleware.AUTH_MIDDLEWARE, async (c) => {
 })
 
 type ClosePositionSchema = z.infer<typeof pv.close_position_schema>;
-
+// setTimeout(() => {
+//     console.log(global.futures[0]);
+// }, 10000)
 userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
     const body = await c.req.json();
     await pv.close_position_schema.parseAsync(body);
@@ -317,24 +350,72 @@ userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
     // @ts-ignore
     const user = c.get('user');
     const { positionId, quantity = 0 } = body as ClosePositionSchema;
-    const prevOrder = await OrderModel.findOne({ _id: positionId, user_id: user._id, is_active: true }).lean();
+    const prevOrder = await OrderModel.findOne({ _id: positionId, user_id: user._id }).lean();
     if (!prevOrder) return c.json({ status: 400, message: STATUS_CODES['400'], error_description: `Position with #${positionId} not found.` });
 
     if (prevOrder.stock_quantity < quantity) return c.json({ status: 400, message: STATUS_CODES['200'], error_description: "position stock_quantity is shorter than provided quantity." });
 
-    const closePrice = 0;
+    let closePrice = 0;
+    switch (prevOrder.stock_type) {
+        case "indices": {
+            const prices = global.indices[prevOrder.stock_name]
+            // console.log(prices);
+            const ltp = prices?.last_price || 0;
+            // @ts-ignore
+            closePrice = ltp;
+            break;
+        }
+        case "commodities": {
+            const prices = global.commodities[prevOrder.stock_name]
+            console.log(prices);
+            const ltp = prices?.last_price || 0;
+            console.log(ltp);
+            // @ts-ignore
+            closePrice = ltp;
+            break;
+        }
+        case "stocksDerivatives": {
+            const all_symbol_prices = global.stocksDerivatives;
+            const symbolPrice = all_symbol_prices.find((prices) => prices.tradingsymbol === prevOrder.stock_name);
+            if (symbolPrice) {
+                const ltp = Number(symbolPrice.last_price);
+                closePrice = ltp;
+            }
+            break;
+        }
+        //   }
+        case "midcap": {
+            const all_symbol_prices = global.midcap;
+            const symbolPrice = all_symbol_prices.find((prices) => prices.tradingsymbol === prevOrder.stock_name);
+            if (symbolPrice) {
+                const ltp = Number(symbolPrice.last_price);
+                closePrice = ltp;
+            }
+            break;
+        }
+        case "futures": {
+            const all_symbol_prices = global.futures;
+            const symPrice = all_symbol_prices.find((prices) => prices.tradingsymbol === prevOrder.stock_name);
+            if (symPrice) {
+                const ltp = Number(symPrice.last_price)
+                console.log(ltp);
+            }
+            break;
+        }
+    }
     let closeOrder;
     if (0 === quantity || prevOrder.stock_quantity === quantity) {
-        closeOrder = await OrderModel.findByIdAndUpdate(prevOrder._id, { is_active: 0, closePrice: closePrice }, { new: true })
+        closeOrder = await OrderModel.findByIdAndDelete(prevOrder._id);
+        const historyD = new HistoryModel({ is_active: false, is_interaday: prevOrder.is_interaday, stock_type: prevOrder.stock_type, closePrice: closePrice, type: prevOrder.type ? 0 : 1, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, stock_quantity: prevOrder.stock_quantity, is_nse: prevOrder.is_nse, user_id: prevOrder.user_id })
+        await historyD.save()
         //@ts-ignore
         delete global.positions[positionId];
     } else {
-        const toCloseOrder = new OrderModel({ is_active: 0, stock_quantity: quantity, closePrice: closePrice, is_nse: prevOrder.is_nse, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, type: prevOrder.type, user_id: prevOrder.user_id, is_interaday: prevOrder.is_interaday, stock_type: prevOrder.stock_type });
         const pO = await OrderModel.findByIdAndUpdate(prevOrder._id, { stock_quantity: prevOrder.stock_quantity - quantity }, { new: true });
+        const historyD = new HistoryModel({ is_active: false, stock_quantity: quantity, closePrice: closePrice, is_nse: prevOrder.is_nse, stock_name: prevOrder.stock_name, stock_price: prevOrder.stock_price, type: prevOrder.type === 0 ? 1 : 0, user_id: prevOrder.user_id, is_interaday: prevOrder.is_interaday, stock_type: prevOrder.stock_type });
+        await historyD.save()
         //@ts-ignore
         global.positions[positionId].stock_quantity = pO?.stock_quantity;
-
-        closeOrder = await toCloseOrder.save();
     }
     let updatedUser;
     try {
@@ -344,7 +425,8 @@ userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
         try {
             const quant = (quantity === 0) ? prevOrder.stock_quantity : quantity;
             //@ts-ignore
-            const mb = calculateMarginNBalance(user.wallet, quant, prevOrder.is_interaday, prevOrder.stock_type, profit);
+            const mb = calculateMarginNBalance(user.wallet, quant, prevOrder.is_interaday, prevOrder.stock_price, prevOrder.stock_type, profit);
+            console.log(mb);
             margin = mb.margin;
             balance = mb.balance;
         } catch (err: unknown) {
@@ -369,9 +451,10 @@ type marginTimeValue = {
 }
 const marginTimes: Record<string, marginTimeValue> = {
     indices: { interaday: 500, holding: 50 },
+    midcap: { interaday: 500, holding: 50 },
     options: { interaday: 10, holding: 1 },
     futures: { interaday: 500, holding: 50 },
-    commodities: { interaday: 0, holding: 0 },
+    commodities: { interaday: 500, holding: 50 },
     stocksDerivatives: { interaday: 500, holding: 50 },
     currencies: { interaday: 0, holding: 0 }
 }
@@ -385,16 +468,30 @@ const marginTimes: Record<string, marginTimeValue> = {
  * @param profit required if close position
  * @returns 
  */
-const calculateMarginNBalance = (balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string, profit: number = 0): { margin: number, balance: number } => {
+const calculateMarginNBalance = (balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string, profit: number | null = null): { margin: number, balance: number } => {
+    console.log(balance, quantity, isInteraday, amount, stockType, profit)
     const brokeragePercent = 0.01;
     if (!marginTimes[stockType]) throw new Error("Invalid stockType: " + stockType);
-
+    if (balance <= 0) {
+        throw new Error("Insufficient balance")
+    }
     const times = isInteraday ? marginTimes[stockType].interaday : marginTimes[stockType].holding
     const totalCharge = quantity * amount;
     const brokerage = (brokeragePercent / 100) * totalCharge;
-    const calcBalance = balance - (totalCharge) / times - brokerage + profit;
+    console.log(balance);
+    const calcBalance = balance - (totalCharge) / times - brokerage + (profit !== null ? profit : 0);
+    console.log(balance);
     const calcMargin = calcBalance * times;
 
+    const userCalcMargin = balance * times;
+
+    if (profit === null) {
+        if (calcMargin < 0 || userCalcMargin < calcMargin) {
+            throw new Error("Insufficient balance")
+        }
+    }
+    console.log(calcMargin, calcBalance);
     return { margin: calcMargin, balance: calcBalance };
 }
+
 export default userRouter;
