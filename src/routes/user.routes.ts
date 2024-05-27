@@ -292,7 +292,7 @@ userRouter.get("history", middleware.AUTH_MIDDLEWARE, async (c) => {
     const history = await HistoryModel.find({ user_id: user_id });
     const netPro = history.reduce((pv, cv) => {
         if (cv.is_active === false) {
-            const pro = cv.closePrice - cv.stock_price
+            const pro = ((cv?.closePrice || 0) - cv.stock_price) * cv.stock_quantity;
             return pv += pro;
         } else {
             return pv;
@@ -340,9 +340,7 @@ userRouter.delete('/symbol', middleware.AUTH_MIDDLEWARE, async (c) => {
 })
 
 type ClosePositionSchema = z.infer<typeof pv.close_position_schema>;
-// setTimeout(() => {
-//     console.log(global.futures[0]);
-// }, 10000)
+
 userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
     const body = await c.req.json();
     await pv.close_position_schema.parseAsync(body);
@@ -423,18 +421,20 @@ userRouter.post("/close-position", middleware.AUTH_MIDDLEWARE, async (c) => {
 
         let margin: number = user.wallet, balance: number = user.balance;
         try {
-            const quant = (quantity === 0) ? prevOrder.stock_quantity : quantity;
+            // const quant = (quantity === 0) ? prevOrder.stock_quantity : quantity;
             //@ts-ignore
-            const mb = calculateMarginNBalance(user.wallet, quant, prevOrder.is_interaday, prevOrder.stock_price, prevOrder.stock_type, profit);
-            console.log(mb);
-            margin = mb.margin;
-            balance = mb.balance;
+            // const mb = calculateMarginNBalance(user.wallet, quant, prevOrder.is_interaday, prevOrder.stock_price, prevOrder.stock_type, profit);
+            const bal = calculateBalanceForCloseOperation(user.wallet, prevOrder.stock_quantity, profit, prevOrder.stock_price, prevOrder.stock_type, prevOrder.stock_price);
+            // console.log(mb);
+            balance = bal;
+            // margin = mb.margin;
+            // balance = mb.balance;
         } catch (err: unknown) {
             if (err instanceof Error) {
                 console.log(err.message);
             }
         }
-        updatedUser = await userModel.findByIdAndUpdate(user._id, { $set: { wallet: balance, margin: margin } }, { new: true })
+        updatedUser = await userModel.findByIdAndUpdate(user._id, { $set: { wallet: balance } }, { new: true })
         return c.json({ status: 200, message: STATUS_CODES['200'], order: closeOrder, updatedUser });
     } catch (err) {
         console.log(err);
@@ -470,17 +470,17 @@ const marginTimes: Record<string, marginTimeValue> = {
  */
 const calculateMarginNBalance = (balance: number, quantity: number, isInteraday: boolean, amount: number, stockType: string, profit: number | null = null): { margin: number, balance: number } => {
     console.log(balance, quantity, isInteraday, amount, stockType, profit)
-    const brokeragePercent = 0.01;
+    const brokeragePercent = 0.0001;
     if (!marginTimes[stockType]) throw new Error("Invalid stockType: " + stockType);
     if (balance <= 0) {
         throw new Error("Insufficient balance")
     }
     const times = isInteraday ? marginTimes[stockType].interaday : marginTimes[stockType].holding
     const totalCharge = quantity * amount;
-    const brokerage = (brokeragePercent / 100) * totalCharge;
-    console.log(balance);
+    const brokerage = (brokeragePercent) * totalCharge;
+    // console.log(balance);
     const calcBalance = balance - (totalCharge) / times - brokerage + (profit !== null ? profit : 0);
-    console.log(balance);
+    // console.log(balance);
     const calcMargin = calcBalance * times;
 
     const userCalcMargin = balance * times;
@@ -493,5 +493,14 @@ const calculateMarginNBalance = (balance: number, quantity: number, isInteraday:
     console.log(calcMargin, calcBalance);
     return { margin: calcMargin, balance: calcBalance };
 }
+const calculateBalanceForCloseOperation = (balance: number, quantity: number, profit: number, amount: number, orderType: string, isInteraday: string) => {
+    if (!marginTimes[orderType]) throw new Error("Invalid stockType: " + orderType);
+    const brokeragePercent = 0.0001;
+    const times = isInteraday ? marginTimes[orderType].interaday : marginTimes[orderType].holding
+    const brokerage = (brokeragePercent) * (amount * quantity);
+    // console.log(times);
+    balance = balance + ((quantity * amount) / times) + profit - brokerage;
 
+    return balance;
+}
 export default userRouter;

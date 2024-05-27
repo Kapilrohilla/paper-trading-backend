@@ -104,7 +104,7 @@ async function setIndicesFutures() {
     for (let obj of res) {
         const symbol = obj.symbol;
         const roundedTo50 = roundToNearest(obj.last_price as number, 50);
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 10; i++) {
             const roundFactor = 50;
             const searchStrike = [(roundedTo50 + (i * roundFactor)), (roundedTo50 - (i * roundFactor))]
             //@ts-ignore
@@ -115,7 +115,7 @@ async function setIndicesFutures() {
     }
 
     global.futures = futures;
-    console.log("indices futures setting complete...")
+    console.log("indices futures setting complete... : ")
 }
 
 async function setCurrencies() {
@@ -123,7 +123,8 @@ async function setCurrencies() {
     const sym = [];
     for (let curr of currency) {
         const ins = await Instrument.find({ name: curr, instrument_type: "CE" })
-        console.log(ins);
+        sym.push(ins);
+        // console.log(ins);
     }
 
 }

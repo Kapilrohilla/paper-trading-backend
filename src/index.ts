@@ -30,13 +30,13 @@ import cronJobs from './lib/crons';
 const envs = dotenv.config().parsed;
 
 app.use(cors());
-
+const db = mongoose.connection;
 
 async function main() {
   await instruments.setIndicesGlobally();
   await instruments.setCommodities();
   await instruments.setStockDerivatives();
-  await instruments.setCurrencies();
+  // await instruments.setCurrencies();
   await instruments.setMicaps()
   // get realtime data of indices
   const indicesSymbol = Object.keys(global.indices);
@@ -60,12 +60,15 @@ async function main() {
     i_c_tokens.push(ins.instrument_token);
   }
   zerodha.ticker.connect();
-  console.log(i_c_tokens)
+  // console.log(i_c_tokens)
   zerodha.ticker.on('connect', () => zerodha.subscribe(i_c_tokens));
   //@ts-ignore
   zerodha.ticker.on("ticks", zerodha.handleOnTicks);
 }
-
+// [
+// {
+//   time: 0
+// }].sort((a, b)=> -a.time+b.time)
 
 
 app.get('/ping', (c) => {
@@ -89,11 +92,27 @@ app.get("/symbol", async (c) => {
   const stockDerivSymbol = global.stocksDerivatives.map((ele) => ele.tradingsymbol);
   const midcapSymbol = global.midcap.map((ele) => ele.tradingsymbol);
   const symbols = [];
-  console.log(midcapSymbol)
+  // console.log(midcapSymbol)
   symbols.push({ indices: indicSymbol, futures: futSymbol, commodities: commoSymbol, stocksDerivatives: stockDerivSymbol, midcap: midcapSymbol });
 
   return c.json({ status: 200, message: STATUS_CODES['200'], symbols })
 });
+
+app.get("/ltp", async (c) => {
+  const collectionNames = await db.listCollections();
+  // console.log(collectionNames);
+  const coll = collectionNames.map((coll) => {
+    return coll.name;
+  })
+  // const collect = db.collection()
+  const lastRecord = []
+  for (let col of coll) {
+    // db.collection(col).find({})}
+    const lr = await db.collection(col).find().limit(1).sort({ $natural: -1 }).toArray()
+    lastRecord.push(lr)
+  }
+  return c.json({ status: 200, message: STATUS_CODES['200'], lastRecord });
+})
 
 app.route("/", userRouter);
 

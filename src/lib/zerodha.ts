@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { KiteTicker } from "kiteconnect";
 import instruments from "./instuments.lib";
 import OrderModel from "../models/order.model";
+import mongoose from "mongoose";
 
 const envs = dotenv.config().parsed;
 
@@ -69,6 +70,7 @@ function handleOnTicks(ticks: TickType) {
     if (global.isFuturesRetrieved === false) {
         instruments.setIndicesFutures().then(r => {
             const tokens = instruments.getFuturesIns_Tokens();
+            console.log("Total new Token: " + tokens.length);
             subscribe(tokens);
         })
     }
@@ -76,6 +78,10 @@ function handleOnTicks(ticks: TickType) {
     const futSymbols = handleFutureTicks(commoSymbol);
     const derivSymbols = handleStocksDerivatives(futSymbols);
     const midcapSymbols = handleMidcapDerivatives(derivSymbols);
+    // for (let i = 0; i < ticks.length; i++) {
+    //     const tick = ticks[i];
+    //     saveRealTimeDataInDb(tick, tick?.symbol)
+    // }
     global.io.emit("forex", midcapSymbols);
 }
 function handleStocksDerivatives(ticks: TickType) {
@@ -167,4 +173,10 @@ const closePositions = (symbol: string, last_price: number) => {
         }
     }
 }
+const db = mongoose.connection;
+async function saveRealTimeDataInDb(data: any, symbol: string | unknown) {
+    const savedData = await db.collection(`${symbol}_d`).insertOne({ ...data, createdAt: new Date() });
+    console.log(savedData);
+}
+
 export default zerodha;
