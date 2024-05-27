@@ -10,6 +10,6 @@ declare global {
     var stocksDerivatives: never[] | Record<string, unknown>[]
     var midcap: never[] | Record<string, unknown>[]
     var io: any
-    var currencies: Record<string, Record<string, unknown>>
+    var currencies: any[];
     var positions: Record<string | number, Record<string, unknown>>[]
 }

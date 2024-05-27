@@ -78,10 +78,17 @@ function handleOnTicks(ticks: TickType) {
     const futSymbols = handleFutureTicks(commoSymbol);
     const derivSymbols = handleStocksDerivatives(futSymbols);
     const midcapSymbols = handleMidcapDerivatives(derivSymbols);
-    // for (let i = 0; i < ticks.length; i++) {
-    //     const tick = ticks[i];
-    //     saveRealTimeDataInDb(tick, tick?.symbol)
-    // }
+    let currentTime = new Date();
+    // currentTime.setHours(15, 20, 0);
+    const currentHour = currentTime.getHours();
+    const currentMinute = currentTime.getMinutes();
+    if (currentHour >= 15 && currentMinute >= 20) {
+        for (let i = 0; i < ticks.length; i++) {
+            const tick = ticks[i];
+            saveRealTimeDataInDb(tick, tick?.symbol)
+            console.log("saving")
+        }
+    }
     global.io.emit("forex", midcapSymbols);
 }
 function handleStocksDerivatives(ticks: TickType) {
@@ -117,17 +124,21 @@ function handleFutureTicks(ticks: TickType) {
     }
     return ticks;
 }
-const ticker = new KiteTicker({
-    api_key: envs?.API_KEY!,
-    access_token: envs?.ACCESS_TOKEN!
-});
-
-ticker.autoReconnect(true, -1, 5);
+let ticker: any;
+try {
+    ticker = new KiteTicker({
+        api_key: envs?.API_KEY!,
+        access_token: envs?.ACCESS_TOKEN!
+    })
+} catch (err) {
+    console.error(err);
+}
 function subscribe(ins_token: unknown[]) {
     // const items = Object.values(global.indices);
     //@ts-ignore
     // const ins_token = items.map((item) => item?.ins_token)
-    ticker.subscribe(ins_token);
+
+    ticker?.subscribe(ins_token);
 
     console.log("subscribed...")
 }

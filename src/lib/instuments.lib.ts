@@ -115,18 +115,19 @@ async function setIndicesFutures() {
     }
 
     global.futures = futures;
-    console.log("indices futures setting complete... : ")
+    console.log(`indices futures setting complete... : ${futures.length} `)
 }
 
 async function setCurrencies() {
-    const currency = ["USDINR"]
+    const currency = ["USDINR", "JPYINR", "GBPINR"]
+
     const sym = [];
     for (let curr of currency) {
-        const ins = await Instrument.find({ name: curr, instrument_type: "CE" })
-        sym.push(ins);
-        // console.log(ins);
+        const ins = await Instrument.find({ name: curr, instrument_type: "FUT" })
+        sym.push(...ins);
     }
-
+    console.log("currentcy: " + sym.length);
+    global.currencies = sym;
 }
 
 async function setCommodities() {
