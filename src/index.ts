@@ -19,6 +19,7 @@ global.currencies = [];
 global.midcap = [];
 global.isFuturesRetrieved = false;
 global.positions = [];
+global.lastData = [];
 import instruments from './lib/instuments.lib';
 import generateChecksum from './lib/generate_checksum';
 import zerodha from './lib/zerodha';
@@ -27,6 +28,7 @@ import { cors } from "hono/cors";
 import { ZodError } from 'zod';
 import OrderModel from './models/order.model';
 import cronJobs from './lib/crons';
+
 const envs = dotenv.config().parsed;
 
 app.use(cors());
@@ -86,11 +88,13 @@ app.get("/cs", (c) => {
 
 app.get("/symbol", async (c) => {
   const indicSymbol = Object.keys(global.indices)
-  const futSymbol = global.futures.map((ele) => ele.tradingsymbol);
+  const futSymbol = global.futures.map((ele) => { return { tradingsymbol: ele.tradingsymbol, name: ele.name, expiry: ele.expiry, strike: ele.strike, instrument_type: ele.instrument_type } });
   const commoSymbol = Object.keys(global.commodities);
-  const stockDerivSymbol = global.stocksDerivatives.map((ele) => ele.tradingsymbol);
+  const stockDerivSymbol = global.stocksDerivatives.map((ele) => {
+    return ele.tradingsymbol
+  });
   const midcapSymbol = global.midcap.map((ele) => ele.tradingsymbol);
-  const currencySymbol = global.currencies.map((ele) => ele.tradingsymbol);
+  const currencySymbol = global.currencies.map((ele) => { return { tradingSymbol: ele.tradingsymbol, name: ele.name, expiry: ele.expiry, strike: ele.strike, instrument_type: ele.instrument_type } });
   const symbols = [];
 
   symbols.push({ indices: indicSymbol, futures: futSymbol, commodities: commoSymbol, stocksDerivatives: stockDerivSymbol, midcap: midcapSymbol, currencySymbol: currencySymbol });
@@ -98,24 +102,32 @@ app.get("/symbol", async (c) => {
   return c.json({ status: 200, message: STATUS_CODES['200'], symbols })
 });
 
+async function findLastData() {
+  const lastRecord = [];
+  console.log("lastDataLength: " + global.lastData.length)
+
+  if (global.lastData.length === 0 || new Date().getHours() === 10) {
+    try {
+      const collectionNames = await db.listCollections();
+      const coll = collectionNames.filter((coll) => coll.name.slice(coll.name.length - 2) === "_d").map((coll) => coll.name)
+      for (let col of coll) {
+        const lr = await db.collection(col).find().limit(1).sort({ $natural: -1 }).toArray()
+        lastRecord.push(lr[0])
+        global.lastData = lastRecord;
+      }
+    } catch (err) {
+      console.log(err);
+    }
+    return lastRecord;
+  } else {
+    return global.lastData;
+  }
+}
+
 app.get("/ltp", async (c) => {
   console.log("api called");
   try {
-
-    const collectionNames = await db.listCollections();
-    // console.log(collectionNames);
-    const coll = collectionNames.map((coll) => {
-      return coll.name;
-    })
-
-    // const collect = db.collection()
-    const lastRecord = []
-    for (let col of coll) {
-      // db.collection(col).find({})}
-      const lr = await db.collection(col).find().limit(1).sort({ $natural: -1 }).toArray()
-      // console.log(lr);
-      lastRecord.push(lr[0])
-    }
+    const lastRecord = await findLastData();
     return c.json({ status: 200, message: STATUS_CODES['200'], lastRecord });
   } catch (err) {
     console.log(err);

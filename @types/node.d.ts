@@ -12,4 +12,5 @@ declare global {
     var io: any
     var currencies: any[];
     var positions: Record<string | number, Record<string, unknown>>[]
+    var lastData: Record<string, unknown>[]
 }
