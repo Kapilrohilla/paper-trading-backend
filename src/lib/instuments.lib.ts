@@ -101,21 +101,25 @@ async function setIndicesFutures() {
 
     const res = Object.values(global.indices);
     const futures: never[] | Record<string, unknown>[] = [];
-    for (let obj of res) {
-        const symbol = obj.symbol;
-        const roundedTo50 = roundToNearest(obj.last_price as number, 50);
-        for (let i = 0; i < 10; i++) {
-            const roundFactor = 50;
-            const searchStrike = [(roundedTo50 + (i * roundFactor)), (roundedTo50 - (i * roundFactor))]
-            //@ts-ignore
-            const ins = await Instrument.find({ strike: { $in: searchStrike }, name: { $regex: obj.symbol?.split(' ')[0] } });
-            //@ts-ignore
-            futures.push(...ins);
+    try {
+        for (let obj of res) {
+            const symbol = obj.symbol;
+            const roundedTo50 = roundToNearest(obj.last_price as number, 50);
+            for (let i = 0; i < 10; i++) {
+                const roundFactor = 50;
+                const searchStrike = [(roundedTo50 + (i * roundFactor)), (roundedTo50 - (i * roundFactor))]
+                //@ts-ignore
+                const ins = await Instrument.find({ strike: { $in: searchStrike }, name: { $regex: obj.symbol?.split(' ')[0] } });
+                //@ts-ignore
+                futures.push(...ins);
+            }
         }
+        global.futures = futures;
+        console.log(`indices futures setting complete... : ${futures.length} `)
+    } catch (err) {
+        console.log("Failed to retrieve futures indices");
     }
 
-    global.futures = futures;
-    console.log(`indices futures setting complete... : ${futures.length} `)
 }
 
 async function setCurrencies() {
@@ -145,11 +149,13 @@ async function setCommodities() {
 }
 
 function getFuturesIns_Tokens() {
-    const tokens = new Array(global.futures.length);
+    const tokens = [];
+
     for (let i = 0; i < global.futures.length; i++) {
         const token = global.futures[i]?.instrument_token;
         tokens.push(token);
     }
+    console.log("new token futures to subs length: " + tokens.length);
     return tokens;
 }
 

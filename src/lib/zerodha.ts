@@ -63,6 +63,22 @@ function handleMidcapDerivatives(ticks: TickType) {
     return ticks;
 }
 
+function handleCurrencyTicks(ticks: TickType) {
+    for (let i = 0; i < ticks.length; i++) {
+        const tick = ticks[i];
+        const tickCacheIdx = global.currencies.findIndex((obj) => obj.instrument_token === tick.instrument_token)
+
+        if (tickCacheIdx != -1) {
+            global.currencies[tickCacheIdx].last_price = tick.last_price;
+            ticks[i].symbol = global.currencies[tickCacheIdx].tradingsymbol;
+            // @ts-ignore
+            const symbol: string = global.currencies[tickCacheIdx].tradingsymbol
+            closePositions(symbol, tick.last_price as number);
+        }
+    }
+    return ticks;
+}
+
 function handleOnTicks(ticks: TickType) {
     console.log(ticks.length);
     const indicSymbol = handleIndicesTick(ticks);
@@ -78,6 +94,7 @@ function handleOnTicks(ticks: TickType) {
     const futSymbols = handleFutureTicks(commoSymbol);
     const derivSymbols = handleStocksDerivatives(futSymbols);
     const midcapSymbols = handleMidcapDerivatives(derivSymbols);
+    const currencySymbols = handleCurrencyTicks(midcapSymbols);
     let currentTime = new Date();
     // currentTime.setHours(15, 20, 0);
     const currentHour = currentTime.getHours();
@@ -89,7 +106,7 @@ function handleOnTicks(ticks: TickType) {
             console.log("saving")
         }
     }
-    global.io.emit("forex", midcapSymbols);
+    global.io.emit("forex", currencySymbols);
 }
 function handleStocksDerivatives(ticks: TickType) {
     for (let i = 0; i < ticks.length; i++) {
