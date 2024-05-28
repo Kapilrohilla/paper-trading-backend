@@ -125,7 +125,7 @@ async function findLastData() {
 }
 
 app.get("/ltp", async (c) => {
-  console.log("api called");
+  // console.log("api called");
   try {
     const lastRecord = await findLastData();
     return c.json({ status: 200, message: STATUS_CODES['200'], lastRecord });

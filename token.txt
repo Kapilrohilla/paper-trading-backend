@@ -1,4 +1,4 @@
-https://stocktradecafe.com/redirect_url.php?type=login&status=success&request_token=gtEAGYRIDtAA5CxCGIzpQ2bpqfuhloUp&action=login
+https://stocktradecafe.com/redirect_url.php?status=success&request_token=t45NWQgWph8w6C3yGNW2HkC31Blr5zjY&action=login&type=login
 
 ***************************************************
 zerodha API KEY: x5hxpj7xieuvn4iq
