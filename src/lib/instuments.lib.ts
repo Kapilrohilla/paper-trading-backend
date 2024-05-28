@@ -17,9 +17,15 @@ async function setIndicesGlobally() {
     for (let i = 0; i < indexNames.length; i++) {
         try {
             const insDoc = await Instrument.findOne({ tradingsymbol: indexNames[i] })
-            if (insDoc) {
-                indices[insDoc.tradingsymbol] = {}
-                indices[insDoc.tradingsymbol]["ins_token"] = insDoc.instrument_token;
+            if (insDoc !== null) {
+                console.log(insDoc.instrument_type);
+                indices[insDoc.tradingsymbol as unknown as string] = {};
+                indices[insDoc.tradingsymbol as unknown as string]["ins_token"] = insDoc.instrument_token;
+                indices[insDoc.tradingsymbol as unknown as string]['strike'] = insDoc.strike;
+                indices[insDoc.tradingsymbol as unknown as string]['name'] = insDoc.name;
+                indices[insDoc.tradingsymbol as unknown as string]['tradingsymbol'] = insDoc.tradingsymbol;
+                indices[insDoc.tradingsymbol as unknown as string]['expiry'] = insDoc.expiry || "";
+                indices[insDoc.tradingsymbol as unknown as string]['instrument_type'] = insDoc.instrument_type;
             }
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -130,7 +136,7 @@ async function setCurrencies() {
         const ins = await Instrument.find({ name: curr, instrument_type: "FUT" })
         sym.push(...ins);
     }
-    console.log("currentcy: " + sym.length);
+    // console.log("currentcy: " + sym.length);
     global.currencies = sym;
 }
 

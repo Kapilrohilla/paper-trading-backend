@@ -28,6 +28,7 @@ import { cors } from "hono/cors";
 import { ZodError } from 'zod';
 import OrderModel from './models/order.model';
 import cronJobs from './lib/crons';
+import Instrument from './models/instruments.model';
 
 const envs = dotenv.config().parsed;
 
@@ -41,6 +42,7 @@ async function main() {
   await instruments.setCurrencies();
   await instruments.setMicaps()
   // get realtime data of indices
+
   const indicesSymbol = Object.keys(global.indices);
   const i_c_tokens: unknown[] = []
   for (let i = 0; i < indicesSymbol.length; i++) {
@@ -87,13 +89,24 @@ app.get("/cs", (c) => {
 })
 
 app.get("/symbol", async (c) => {
-  const indicSymbol = Object.keys(global.indices)
+  const inSymbol = Object.keys(global.indices)
+  const indicSymbol = [];
+  for (let i = 0; i < inSymbol.length; i++) {
+    // console.log(global.indices[inSymbol[i]].instrument_type)
+    indicSymbol.push({ tradingsymbol: global.indices[inSymbol[i]].tradingsymbol, name: global.indices[inSymbol[i]].name, expiry: global.indices[inSymbol[i]].expiry, instrument_type: global.indices[inSymbol[i]].instrument_type, strike: global.indices[inSymbol[i]].strike });
+  }
   const futSymbol = global.futures.map((ele) => { return { tradingsymbol: ele.tradingsymbol, name: ele.name, expiry: ele.expiry, strike: ele.strike, instrument_type: ele.instrument_type } });
-  const commoSymbol = Object.keys(global.commodities);
+  const comSymbol = Object.keys(global.commodities);
+  const commoSymbol = [];
+  // console.log(comSymbol);
+  for (let i = 0; i < comSymbol.length; i++) {
+    const sym = comSymbol[i];
+    commoSymbol.push({ tradingsymbol: sym, name: global.commodities[sym].name, expiry: global.commodities[sym].expiry || "", instrument_type: global.commodities[sym].instrument_type, strike: global.commodities[sym].strike })
+  }
   const stockDerivSymbol = global.stocksDerivatives.map((ele) => {
-    return ele.tradingsymbol
+    { return { tradingsymbol: ele.tradingsymbol, name: ele.name, expiry: ele.expiry, strike: ele.strike, instrument_type: ele.instrument_type } }
   });
-  const midcapSymbol = global.midcap.map((ele) => ele.tradingsymbol);
+  const midcapSymbol = global.midcap.map((ele) => { return { tradingsymbol: ele.tradingsymbol, name: ele.name, expiry: ele.expiry, strike: ele.strike, instrument_type: ele.instrument_type } });
   const currencySymbol = global.currencies.map((ele) => { return { tradingSymbol: ele.tradingsymbol, name: ele.name, expiry: ele.expiry, strike: ele.strike, instrument_type: ele.instrument_type } });
   const symbols = [];
 
