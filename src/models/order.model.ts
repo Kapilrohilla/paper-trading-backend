@@ -1,6 +1,18 @@
 import mongoose from "mongoose";
 
-const os = new mongoose.Schema({
+export interface OrderType {
+    stock_name: string;
+    stock_price: number;
+    stock_quantity: number;
+    is_nse: boolean;
+    user_id: mongoose.Types.ObjectId;
+    type: number; // 0, 1
+    closePrice?: number;
+    is_interaday: boolean;
+    stock_type: string;
+
+}
+const os = new mongoose.Schema<OrderType>({
     stock_name: { type: String, required: true },
     stock_price: { type: Number, required: true },
     stock_quantity: { type: Number, required: true, min: 0 },

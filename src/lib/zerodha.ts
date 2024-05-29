@@ -1,8 +1,10 @@
 import dotenv from "dotenv";
 import { KiteTicker } from "kiteconnect";
 import instruments from "./instuments.lib";
-import OrderModel from "../models/order.model";
+import OrderModel, { OrderType } from "../models/order.model";
 import mongoose from "mongoose";
+import userModel from "../models/user.model";
+import NotifiModel from "../models/notification.model";
 
 const envs = dotenv.config().parsed;
 
@@ -19,6 +21,7 @@ function handleIndicesTick(ticks: TickType) {
                 global.indices[symbol].last_price = tick.last_price;
                 global.indices[symbol].symbol = symbol;
                 tick.symbol = symbol;
+                profit_calculation(symbol, tick.last_price as number);
             }
         }
     }
@@ -57,6 +60,7 @@ function handleMidcapDerivatives(ticks: TickType) {
             // @ts-ignore
             const symbol: string = global.midcap[tickCacheIdx].tradingsymbol
             // console.log("Derivatives: " + symbol);
+            profit_calculation(symbol, tick.last_price as number);
             closePositions(symbol, tick.last_price as number);
         }
     }
@@ -68,11 +72,12 @@ function handleCurrencyTicks(ticks: TickType) {
         const tick = ticks[i];
         const tickCacheIdx = global.currencies.findIndex((obj) => obj.instrument_token === tick.instrument_token)
 
-        if (tickCacheIdx != -1) {
+        if (tickCacheIdx !== -1) {
             global.currencies[tickCacheIdx].last_price = tick.last_price;
             ticks[i].symbol = global.currencies[tickCacheIdx].tradingsymbol;
             // @ts-ignore
             const symbol: string = global.currencies[tickCacheIdx].tradingsymbol
+            // console.log(tick.last_price, ", last price" + symbol);
             closePositions(symbol, tick.last_price as number);
         }
     }
@@ -96,14 +101,13 @@ function handleOnTicks(ticks: TickType) {
     const midcapSymbols = handleMidcapDerivatives(derivSymbols);
     const currencySymbols = handleCurrencyTicks(midcapSymbols);
     let currentTime = new Date();
-    // currentTime.setHours(15, 20, 0);
+
     const currentHour = currentTime.getHours();
     const currentMinute = currentTime.getMinutes();
     if (currentHour >= 15 && currentMinute >= 20) {
         for (let i = 0; i < ticks.length; i++) {
             const tick = ticks[i];
             saveRealTimeDataInDb(tick, tick?.symbol)
-            console.log("saving")
         }
     }
     global.io.emit("forex", currencySymbols);
@@ -160,7 +164,7 @@ function subscribe(ins_token: unknown[]) {
     console.log("subscribed...")
 }
 
-const zerodha = { handleOnTicks, ticker, subscribe };
+
 
 const closePositions = (symbol: string, last_price: number) => {
     const currentTime = new Date();
@@ -206,5 +210,101 @@ async function saveRealTimeDataInDb(data: any, symbol: string | unknown) {
     const savedData = await db.collection(`${symbol}_d`).insertOne({ ...data, createdAt: new Date() });
     console.log(savedData);
 }
+interface OrderTypeWithLtp extends OrderType {
+    ltp?: number;
+}
+async function profit_calculation(symbol: string, ltp: number) {
+    const users = Object.keys(global.users);
+    for (let i = 0; i < users.length; i++) {
+        const userDetails = global.users[users[i]];
+        const userPoss: OrderTypeWithLtp[] = userDetails.positions;
+        // if (users[i] === "664c25fd69874a17e42b8c09") {
+        let netRunningProfit = 0;
+        let netOrderPrice = 0;
+        if (userPoss) {
+            for (let i = 0; i < userPoss.length; i++) {
+                const position = userPoss[i];
+                const stockName = position.stock_name;
+                const stockType = position.stock_type;
+                netOrderPrice += position.stock_price
+
+                let profit;
+                if (stockName === symbol) {
+                    const orderPrice = position.stock_price;
+                    // console.log("ltp: " + ltp, ", stock: " + stockName);
+                    //@ts-ignore
+                    userPoss[i].ltp = ltp
+                    profit = ltp - orderPrice;
+                } else {
+                    let lastPrice;
+                    if (stockType === "indices") {
+                        lastPrice = Number(global.indices[stockName]["last_price"]);
+                        if (Number.isNaN(lastPrice)) {
+                            continue;
+                        }
+                    } else if (stockType === "midcap") {
+                        // const tickCacheIdx = global.midcap.findIndex((obj) => obj.tradingSymbol === stockName)
+                        const tickCacheIdx = global.midcap.findIndex((obj) => obj.tradingsymbol === stockName)
+                        if (tickCacheIdx === -1) { continue; }
+                        lastPrice = global.midcap[tickCacheIdx]?.last_price as number | undefined
+                        //@ts-ignore
+                        userPoss[i].ltp = lastPrice;
+                        // console.log("lastPrice : " + lastPrice, " midcap");
+                    } else if (stockType === "futures") {
+                        const tickCacheIdx = global.futures.findIndex((obj) => obj.tradingsymbol === stockName);
+                        if (tickCacheIdx === -1) { continue; }
+                        lastPrice = global.futures[tickCacheIdx].last_price as unknown as number;
+                        //@ts-ignore
+                        userPoss[i].ltp = lastPrice;
+                    } else if (stockType === "currencies") {
+                        const tickCacheIdx = global.currencies.findIndex((obj) => obj.tradingsymbol === stockName);
+                        if (tickCacheIdx === -1) { continue; }
+                        lastPrice = global.currencies[tickCacheIdx].last_price;
+                        userPoss[i].ltp = lastPrice;
+                    } else if (stockType === "commodities") {
+                        lastPrice = Number(global.commodities[stockName]["last_price"]);
+                    }
+
+                    if (!lastPrice) { continue; }
+                    profit = lastPrice - position.stock_price;
+                    // }
+                    netRunningProfit += profit;
+                }
+                // console.log(netRunningProfit)
+            }
+            if (netOrderPrice > 0 && netRunningProfit < 0) {
+                //TODO FIX IT
+                const netLossPercent = (-netRunningProfit) / netOrderPrice * 100;
+                // console.log("net Loss percent " + netLossPercent)
+                if (netLossPercent >= 80) {
+                    OrderModel.updateMany({ user_id: users[i] }, { closePrice: 99 })
+                } else if (netLossPercent >= 60
+                ) {
+                    const newNofitication = new NotifiModel({
+                        message: `Net running profit is ${netLossPercent} of balance`,
+                        user: users[i],
+                        is_read: false
+                    })
+                    await newNofitication.save();
+                }
+            }
+        }
+    }
+}
+
+const getUserDetails = async () => {
+    const users = await userModel.find();
+    for (let i = 0; i < users.length; i++) {
+
+        const userId = users[i]._id;
+        const userPositions = await OrderModel.find({ user_id: userId });
+        global.users[userId.toString()] = { positions: [], balance: 0, runningProfit: 0 };
+        global.users[userId.toString()].positions = userPositions;
+        global.users[userId.toString()].balance = users[i].wallet! || 0;
+
+    }
+}
+
+const zerodha = { handleOnTicks, ticker, subscribe, getUserDetails };
 
 export default zerodha;

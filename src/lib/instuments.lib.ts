@@ -18,7 +18,7 @@ async function setIndicesGlobally() {
         try {
             const insDoc = await Instrument.findOne({ tradingsymbol: indexNames[i] })
             if (insDoc !== null) {
-                console.log(insDoc.instrument_type);
+                // console.log(insDoc.instrument_type);
                 indices[insDoc.tradingsymbol as unknown as string] = {};
                 indices[insDoc.tradingsymbol as unknown as string]["ins_token"] = insDoc.instrument_token;
                 indices[insDoc.tradingsymbol as unknown as string]['strike'] = insDoc.strike;

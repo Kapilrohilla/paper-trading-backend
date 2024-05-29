@@ -7,8 +7,8 @@ const userSchema = new mongoose.Schema({
     avatar: { type: String, required: false, default: "" },
     mobile_verified_at: { type: String, required: false },
     device_id: { type: String, required: false },
-    wallet: { type: Number, required: false, default: 0 },
-    margin: { type: Number, required: false, default: 0 },
+    wallet: { type: Number, required: true, default: 0 },
+    // margin: { type: Number, required: false, default: 0 },
     leverage: { type: Number, required: false, default: 500 },
     symbols: [{ type: String, required: false }]
 },

@@ -20,6 +20,7 @@ global.midcap = [];
 global.isFuturesRetrieved = false;
 global.positions = [];
 global.lastData = [];
+global.users = {};
 import instruments from './lib/instuments.lib';
 import generateChecksum from './lib/generate_checksum';
 import zerodha from './lib/zerodha';
@@ -183,7 +184,8 @@ global.io = io;
 mongoose.connect(envs?.MONGODB_URI as string).then((r => {
   console.log('db connected');
   cronJobs();
-  OrderModel.find({ is_active: true }).then(r => {
+  zerodha.getUserDetails()
+  OrderModel.find({}).then(r => {
     r.forEach((doc) => {
       const key = doc._id.toString();
       //@ts-ignore
